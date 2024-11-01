@@ -277,6 +277,8 @@ dependencies = [
     { name = "flask-sqlalchemy" },
     { name = "oauthlib" },
     { name = "psycopg2-binary" },
+    { name = "sqlalchemy" },
+    { name = "werkzeug" },
 ]
 
 [package.metadata]
@@ -287,6 +289,8 @@ requires-dist = [
     { name = "flask-sqlalchemy", specifier = ">=3.1.1" },
     { name = "oauthlib", specifier = ">=3.2.2" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
+    { name = "sqlalchemy" },
+    { name = "werkzeug" },
 ]
 
 [[package]]
