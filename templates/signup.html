@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - Dark Theme Auth{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Create Account</h2>
+    <form method="POST" action="{{ url_for('signup') }}">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <button type="submit" class="btn">Create Account</button>
+    </form>
+    
+    <p>Already have an account? <a href="{{ url_for('login') }}">Sign In</a></p>
+</div>
+{% endblock %}

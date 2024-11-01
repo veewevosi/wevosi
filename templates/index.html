@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Dark Theme Auth{% endblock %}
+
+{% block content %}
+<div class="welcome-container">
+    <h1>Welcome to DarkAuth</h1>
+    <p>A modern, dark-themed authentication system</p>
+    
+    {% if not current_user.is_authenticated %}
+    <div class="cta-buttons">
+        <a href="{{ url_for('signup') }}" class="btn">Get Started</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

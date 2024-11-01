@@ -1,0 +1,77 @@
+:root {
+    --bg-primary: #121212;
+    --bg-secondary: #1e1e1e;
+    --text-primary: #ffffff;
+    --text-secondary: #b3b3b3;
+    --accent-color: #bb86fc;
+    --error-color: #cf6679;
+    --success-color: #03dac6;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 75px;
+    background-color: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.main-content {
+    margin-top: 75px;
+    padding: 2rem;
+    min-height: calc(100vh - 75px);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.nav-links a {
+    color: var(--text-primary);
+    text-decoration: none;
+    margin-left: 1.5rem;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: var(--accent-color);
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 0 1rem;
+    }
+    
+    .nav-links a {
+        margin-left: 1rem;
+    }
+}

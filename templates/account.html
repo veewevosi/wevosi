@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Account - Dark Theme Auth{% endblock %}
+
+{% block content %}
+<div class="account-container">
+    <h2>Welcome, {{ current_user.username }}</h2>
+    
+    <div class="account-details">
+        <div class="detail-group">
+            <label>Username</label>
+            <p>{{ current_user.username }}</p>
+        </div>
+        
+        <div class="detail-group">
+            <label>Email</label>
+            <p>{{ current_user.email }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
