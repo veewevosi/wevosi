@@ -81,5 +81,6 @@ def logout():
 
 if __name__ == '__main__':
     with app.app_context():
+        db.drop_all()  # Temporarily add this line to recreate tables
         db.create_all()
     app.run(host='0.0.0.0', port=5000)
