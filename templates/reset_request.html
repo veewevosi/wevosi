@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Reset Password - Dark Theme Auth{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Reset Password</h2>
+    <p>Enter your email address and we'll send you a link to reset your password.</p>
+    
+    <form method="POST" action="{{ url_for('reset_request') }}">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <button type="submit" class="btn">Request Reset Link</button>
+    </form>
+    
+    <p>Remember your password? <a href="{{ url_for('login') }}">Sign In</a></p>
+</div>
+{% endblock %}

@@ -12,4 +12,6 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "sqlalchemy",
     "werkzeug",
+    "itsdangerous>=2.2.0",
+    "sendgrid>=6.11.0",
 ]
