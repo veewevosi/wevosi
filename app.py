@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
@@ -7,6 +8,11 @@ from database import db
 from models import User
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from sendgrid.errors import SendGridException
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -16,6 +22,10 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
+
+# SendGrid configuration
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+VERIFIED_SENDER_EMAIL = 'noreply@yourdomain.com'  # Replace with your verified sender
 
 db.init_app(app)
 login_manager = LoginManager()
@@ -27,24 +37,38 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 def send_reset_email(user, token):
-    sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
-    reset_url = url_for('reset_token', token=token, _external=True)
-    
-    message = Mail(
-        from_email='noreply@yourdomain.com',
-        to_emails=user.email,
-        subject='Password Reset Request',
-        html_content=f'''To reset your password, visit the following link:
-        <a href="{reset_url}">Reset Password</a>
-        
-        If you did not make this request, please ignore this email.
-        ''')
+    if not SENDGRID_API_KEY:
+        logger.error("SendGrid API key is not configured")
+        flash('Email service is not properly configured. Please contact support.', 'error')
+        return False
     
     try:
-        sg.send(message)
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        reset_url = url_for('reset_token', token=token, _external=True)
+        
+        message = Mail(
+            from_email=VERIFIED_SENDER_EMAIL,
+            to_emails=user.email,
+            subject='Password Reset Request',
+            html_content=f'''To reset your password, visit the following link:
+            <a href="{reset_url}">Reset Password</a>
+            
+            If you did not make this request, please ignore this email.
+            
+            This link will expire in 1 hour.
+            ''')
+        
+        response = sg.send(message)
+        logger.info(f"Reset email sent successfully to {user.email}. Status code: {response.status_code}")
         return True
+        
+    except SendGridException as e:
+        logger.error(f"SendGrid API error: {str(e)}")
+        flash('Failed to send reset email. Please try again later.', 'error')
+        return False
     except Exception as e:
-        print(f"Error sending email: {e}")
+        logger.error(f"Unexpected error sending email: {str(e)}")
+        flash('An unexpected error occurred. Please try again later.', 'error')
         return False
 
 @app.route('/')
@@ -104,11 +128,14 @@ def reset_request():
         if user:
             token = user.get_reset_token()
             if send_reset_email(user, token):
-                flash('An email has been sent with instructions to reset your password.')
+                flash('An email has been sent with instructions to reset your password.', 'success')
+                logger.info(f"Password reset requested for user: {email}")
             else:
-                flash('An error occurred. Please try again later.')
+                logger.error(f"Failed to send reset email to: {email}")
+                # Flash message is handled in send_reset_email function
         else:
-            flash('No account found with that email address.')
+            logger.info(f"Password reset attempted for non-existent email: {email}")
+            flash('If an account exists with that email address, you will receive password reset instructions.', 'info')
         return redirect(url_for('login'))
     
     return render_template('reset_request.html')
@@ -120,7 +147,8 @@ def reset_token(token):
     
     user = User.verify_reset_token(token)
     if user is None:
-        flash('Invalid or expired reset token')
+        flash('Invalid or expired reset token', 'error')
+        logger.warning(f"Invalid reset token attempt: {token[:10]}...")
         return redirect(url_for('reset_request'))
     
     if request.method == 'POST':
@@ -128,12 +156,13 @@ def reset_token(token):
         confirm_password = request.form['confirm_password']
         
         if password != confirm_password:
-            flash('Passwords do not match')
+            flash('Passwords do not match', 'error')
             return redirect(url_for('reset_token', token=token))
         
         user.password_hash = generate_password_hash(password)
         db.session.commit()
-        flash('Your password has been updated!')
+        logger.info(f"Password successfully reset for user: {user.email}")
+        flash('Your password has been updated! You can now log in with your new password.', 'success')
         return redirect(url_for('login'))
     
     return render_template('reset_password.html')
@@ -151,6 +180,5 @@ def logout():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.drop_all()  # Drop all tables to recreate them with new columns
         db.create_all()
     app.run(host='0.0.0.0', port=5000)
