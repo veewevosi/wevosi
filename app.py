@@ -8,7 +8,7 @@ from database import db
 from models import User
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-from sendgrid.errors import SendGridException
+from python_http_client.exceptions import HTTPError as SendGridException
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +25,10 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 # SendGrid configuration
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
-VERIFIED_SENDER_EMAIL = 'noreply@yourdomain.com'  # Replace with your verified sender
+VERIFIED_SENDER_EMAIL = os.environ.get('SENDGRID_VERIFIED_SENDER', 'noreply@yourdomain.com')
+
+# Debug mode for email testing
+DEBUG_EMAIL = os.environ.get('DEBUG_EMAIL', False)
 
 db.init_app(app)
 login_manager = LoginManager()
@@ -39,7 +42,16 @@ def load_user(user_id):
 def send_reset_email(user, token):
     if not SENDGRID_API_KEY:
         logger.error("SendGrid API key is not configured")
+        if DEBUG_EMAIL:
+            logger.info(f"DEBUG MODE: Reset URL would be: {url_for('reset_token', token=token, _external=True)}")
+            flash('Debug mode: Check logs for reset URL', 'info')
+            return True
         flash('Email service is not properly configured. Please contact support.', 'error')
+        return False
+    
+    if not VERIFIED_SENDER_EMAIL or VERIFIED_SENDER_EMAIL == 'noreply@yourdomain.com':
+        logger.error("SendGrid verified sender email is not configured")
+        flash('Email sender is not properly configured. Please contact support.', 'error')
         return False
     
     try:
@@ -60,6 +72,7 @@ def send_reset_email(user, token):
         
         response = sg.send(message)
         logger.info(f"Reset email sent successfully to {user.email}. Status code: {response.status_code}")
+        logger.debug(f"SendGrid API Response: {response.headers}")
         return True
         
     except SendGridException as e:
@@ -74,6 +87,12 @@ def send_reset_email(user, token):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/debug/users')
+def debug_users():
+    users = User.query.all()
+    user_list = [{'id': user.id, 'username': user.username, 'email': user.email} for user in users]
+    return str(user_list)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

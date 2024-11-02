@@ -13,5 +13,8 @@ dependencies = [
     "sqlalchemy",
     "werkzeug",
     "itsdangerous>=2.2.0",
-    "sendgrid>=6.11.0",
+    "sendgrid==6.10.0",
+    "python-dotenv",
+    "python-http-client",
+    "flask-mail",
 ]
