@@ -190,11 +190,24 @@ def upload_profile_picture():
     
     return redirect(url_for('account'))
 
-@app.route('/reset_request', methods=['GET', 'POST'])
-def reset_request():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    return render_template('reset_request.html')
+@app.route('/debug/users')
+def debug_users():
+    try:
+        users = User.query.all()
+        logger.info(f"Found {len(users)} users in database")
+        user_list = []
+        for user in users:
+            user_list.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'email_verified': user.email_verified,
+                'has_profile_picture': bool(user.profile_picture)
+            })
+        return {'users': user_list}
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in debug_users: {str(e)}")
+        return {'error': 'Database error'}, 500
 
 if __name__ == '__main__':
     with app.app_context():
