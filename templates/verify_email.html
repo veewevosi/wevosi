@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Email Verification - Dark Theme Auth{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Email Verification</h2>
+    {% if verified %}
+        <div class="success-message">
+            <p>Your email has been successfully verified!</p>
+            <p>You can now <a href="{{ url_for('login') }}">login</a> to your account.</p>
+        </div>
+    {% else %}
+        <div class="error-message">
+            <p>{{ error_message if error_message else 'Invalid or expired verification link.' }}</p>
+            <p>Please check your email for a valid verification link or <a href="{{ url_for('resend_verification') }}">request a new one</a>.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

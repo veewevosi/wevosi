@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Resend Verification - Dark Theme Auth{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Resend Verification Email</h2>
+    <p>Enter your email address to receive a new verification link.</p>
+    
+    <form method="POST" action="{{ url_for('resend_verification') }}">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <button type="submit" class="btn">Resend Verification</button>
+    </form>
+    
+    <p>Remember your password? <a href="{{ url_for('login') }}">Sign In</a></p>
+</div>
+{% endblock %}
