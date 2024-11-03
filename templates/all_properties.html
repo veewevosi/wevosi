@@ -2,65 +2,48 @@
 
 {% block title %}All Properties - WEVOSI{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/properties.css') }}">
-<style>
-/* Additional page-specific styles */
-.properties-content {
-    margin-top: 2rem;
-}
-
-.property-card .property-details:last-child {
-    border-bottom: none;
-}
-
-.no-properties-message a {
-    color: var(--accent-color);
-    text-decoration: none;
-}
-
-.no-properties-message a:hover {
-    text-decoration: underline;
-}
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="properties-container">
-    <div class="properties-header">
-        <h2>All Properties</h2>
-        <p class="properties-subtitle">Browse all available properties</p>
-    </div>
+<div class="container">
+    <div class="properties-container">
+        <div class="properties-header">
+            <h2>All Properties</h2>
+            <p class="properties-subtitle">Browse all available properties</p>
+        </div>
 
-    <div class="properties-content">
-        {% if properties %}
-            <div class="properties-grid">
-                {% for property in properties %}
-                    <div class="property-card">
-                        <h3>{{ property.property_name }}</h3>
-                        <div class="property-details">
-                            <p><strong>Location:</strong></p>
-                            <p>{{ property.street_address }}</p>
-                            <p>{{ property.city }}, {{ property.state }} {{ property.zipcode }}</p>
+        <div class="properties-content">
+            {% if properties %}
+                <div class="properties-grid">
+                    {% for property in properties %}
+                        <div class="property-card">
+                            <h3>{{ property.property_name }}</h3>
+                            <div class="property-details">
+                                <p><strong>Location:</strong></p>
+                                <p>{{ property.street_address }}</p>
+                                <p>{{ property.city }}, {{ property.state }} {{ property.zipcode }}</p>
+                            </div>
+                            <div class="property-details">
+                                <p><strong>Property Details:</strong></p>
+                                <p>Type: {{ property.type }}</p>
+                                <p>{{ property.acres }} acres ({{ "{:,.0f}".format(property.square_feet) }} sq ft)</p>
+                            </div>
+                            <p class="property-owner">Listed by: {{ property.owner.username }}</p>
                         </div>
-                        <div class="property-details">
-                            <p><strong>Property Details:</strong></p>
-                            <p>Type: {{ property.type }}</p>
-                            <p>{{ property.acres }} acres ({{ "{:,.0f}".format(property.square_feet) }} sq ft)</p>
-                        </div>
-                        <p class="property-owner">Listed by: {{ property.owner.username }}</p>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="no-properties-message">
-                <h3>No Properties Available</h3>
-                <p>There are currently no properties listed in the system.</p>
-                {% if current_user.is_authenticated %}
-                    <p>Add your property by visiting the <a href="{{ url_for('properties') }}">Properties</a> page.</p>
-                {% endif %}
-            </div>
-        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-properties-message">
+                    <h3>No Properties Available</h3>
+                    <p>There are currently no properties listed in the system.</p>
+                    {% if current_user.is_authenticated %}
+                        <p>Add your property by visiting the <a href="{{ url_for('properties') }}">Properties</a> page.</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/properties.css') }}">
 {% endblock %}

@@ -2,7 +2,7 @@
 .properties-container {
     max-width: 1200px;
     margin: 2rem auto;
-    padding: 2rem;
+    padding: 1rem;
 }
 
 .properties-header {
@@ -43,6 +43,7 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
+    height: 100%;
 }
 
 .property-card:hover {
@@ -63,9 +64,13 @@
 }
 
 .property-card .property-details {
-    margin: 1rem 0;
+    margin: 0.8rem 0;
     padding: 0.8rem 0;
     border-top: 1px solid var(--bg-secondary);
+}
+
+.property-card .property-details:last-child {
+    border-bottom: none;
 }
 
 .property-card .property-details strong {
@@ -97,6 +102,15 @@
     color: var(--text-secondary);
     font-size: 1.1rem;
     margin: 0.5rem 0;
+}
+
+.no-properties-message a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.no-properties-message a:hover {
+    text-decoration: underline;
 }
 
 /* Responsive adjustments */
