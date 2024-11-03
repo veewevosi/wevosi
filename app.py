@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from database import db
 from models import User
+from email_utils import send_verification_email, send_password_reset_email
 import os
 from PIL import Image
 from datetime import datetime, timedelta
@@ -105,10 +106,20 @@ def signup():
             
             db.session.add(new_user)
             db.session.commit()
-            logger.info(f"Successfully created new user with email: {email}")
             
-            flash('Account created successfully')
+            # Generate verification token and send verification email
+            token = new_user.get_verification_token()
+            verification_url = url_for('verify_email', token=token, _external=True)
+            
+            if send_verification_email(email, verification_url):
+                logger.info(f"Successfully created new user and sent verification email to: {email}")
+                flash('Account created successfully! Please check your email to verify your account.')
+            else:
+                logger.error(f"Failed to send verification email to: {email}")
+                flash('Account created, but failed to send verification email. Please request a new verification email.')
+            
             return redirect(url_for('login'))
+            
         except OperationalError as e:
             logger.error(f"Database connection error during signup: {str(e)}")
             flash('Database connection error. Please try again later.')
@@ -272,8 +283,13 @@ def reset_request():
             if user:
                 token = user.get_reset_token()
                 reset_url = url_for('reset_password', token=token, _external=True)
-                logger.info(f"Password reset requested for user: {user.email}")
-                flash('Password reset instructions have been sent to your email.')
+                
+                if send_password_reset_email(email, reset_url):
+                    logger.info(f"Password reset email sent to: {user.email}")
+                    flash('Password reset instructions have been sent to your email.')
+                else:
+                    logger.error(f"Failed to send password reset email to: {email}")
+                    flash('Failed to send reset email. Please try again later.')
             else:
                 logger.debug(f"Password reset requested for non-existent email: {email}")
                 flash('If an account exists with that email, you will receive reset instructions.')
@@ -340,8 +356,13 @@ def resend_verification():
             if user and not user.email_verified:
                 token = user.get_verification_token()
                 verification_url = url_for('verify_email', token=token, _external=True)
-                logger.info(f"Verification email resent to: {user.email}")
-                flash('A new verification email has been sent.')
+                
+                if send_verification_email(email, verification_url):
+                    logger.info(f"Verification email resent to: {user.email}")
+                    flash('A new verification email has been sent.')
+                else:
+                    logger.error(f"Failed to send verification email to: {email}")
+                    flash('Failed to send verification email. Please try again later.')
             else:
                 logger.debug(f"Verification resend requested for invalid email: {email}")
                 flash('If an account exists with that email, you will receive a verification link.')
