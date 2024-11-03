@@ -12,6 +12,7 @@ class User(UserMixin, db.Model):
     reset_token_expires = db.Column(db.DateTime)
     email_verified = db.Column(db.Boolean, default=False)
     email_verification_token = db.Column(db.String(100), unique=True)
+    profile_picture = db.Column(db.String(255))  # Store the path to the profile picture
 
     def get_reset_token(self):
         s = Serializer(current_app.config['SECRET_KEY'])

@@ -17,4 +17,5 @@ dependencies = [
     "python-dotenv",
     "python-http-client",
     "flask-mail",
+    "pillow>=11.0.0",
 ]
