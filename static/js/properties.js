@@ -1,5 +1,5 @@
-// Make openPropertyModal function globally available
-window.openPropertyModal = function() {
+// Define openPropertyModal function in global scope
+function openPropertyModal() {
     const modal = document.getElementById('propertyModal');
     if (modal) {
         modal.style.display = 'block';
