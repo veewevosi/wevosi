@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import uuid
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import logging
+import json
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -82,8 +83,27 @@ def properties():
 @app.route('/all_properties')
 @login_required
 def all_properties():
-    all_properties = Property.query.all()
-    return render_template('all_properties.html', properties=all_properties)
+    try:
+        properties = Property.query.all()
+        properties_data = [{
+            'name': p.property_name,
+            'address': f"{p.street_address}, {p.city}, {p.state} {p.zipcode}",
+            'type': p.type,
+            'acres': p.acres,
+            'latitude': p.latitude,
+            'longitude': p.longitude
+        } for p in properties]
+        
+        return render_template(
+            'all_properties.html',
+            properties=properties,
+            properties_json=json.dumps(properties_data),
+            here_api_key=os.environ.get('HERE_API_KEY')
+        )
+    except Exception as e:
+        logger.error(f"Error in all_properties: {str(e)}")
+        flash('Error loading properties')
+        return redirect(url_for('dashboard'))
 
 @app.route('/add_property', methods=['POST'])
 @login_required

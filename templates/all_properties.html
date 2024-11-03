@@ -2,6 +2,40 @@
 
 {% block title %}All Properties - WEVOSI{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/properties.css') }}">
+<link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+<style>
+    .properties-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin: 2rem 0;
+    }
+    
+    #mapContainer {
+        height: 600px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .properties-list {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    @media (max-width: 1024px) {
+        .properties-layout {
+            grid-template-columns: 1fr;
+        }
+        
+        #mapContainer {
+            height: 400px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="properties-container">
@@ -10,40 +44,60 @@
             <p class="properties-subtitle">Browse all available properties</p>
         </div>
 
-        <div class="properties-content">
-            {% if properties %}
-                <div class="properties-grid">
-                    {% for property in properties %}
-                        <div class="property-card">
-                            <h3>{{ property.property_name }}</h3>
-                            <div class="property-details">
-                                <p><strong>Location:</strong></p>
-                                <p>{{ property.street_address }}</p>
-                                <p>{{ property.city }}, {{ property.state }} {{ property.zipcode }}</p>
+        <div class="properties-layout">
+            <div class="properties-list">
+                {% if properties %}
+                    <div class="properties-grid">
+                        {% for property in properties %}
+                            <div class="property-card">
+                                <h3>{{ property.property_name }}</h3>
+                                <div class="property-details">
+                                    <p><strong>Location:</strong></p>
+                                    <p>{{ property.street_address }}</p>
+                                    <p>{{ property.city }}, {{ property.state }} {{ property.zipcode }}</p>
+                                </div>
+                                <div class="property-details">
+                                    <p><strong>Property Details:</strong></p>
+                                    <p>Type: {{ property.type }}</p>
+                                    <p>{{ property.acres }} acres ({{ "{:,.0f}".format(property.square_feet) }} sq ft)</p>
+                                </div>
+                                <p class="property-owner">Listed by: {{ property.owner.username }}</p>
                             </div>
-                            <div class="property-details">
-                                <p><strong>Property Details:</strong></p>
-                                <p>Type: {{ property.type }}</p>
-                                <p>{{ property.acres }} acres ({{ "{:,.0f}".format(property.square_feet) }} sq ft)</p>
-                            </div>
-                            <p class="property-owner">Listed by: {{ property.owner.username }}</p>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="no-properties-message">
-                    <h3>No Properties Available</h3>
-                    <p>There are currently no properties listed in the system.</p>
-                    {% if current_user.is_authenticated %}
-                        <p>Add your property by visiting the <a href="{{ url_for('properties') }}">Properties</a> page.</p>
-                    {% endif %}
-                </div>
-            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="no-properties-message">
+                        <h3>No Properties Available</h3>
+                        <p>There are currently no properties listed in the system.</p>
+                        {% if current_user.is_authenticated %}
+                            <p>Add your property by visiting the <a href="{{ url_for('properties') }}">Properties</a> page.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            <div id="mapContainer"></div>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/properties.css') }}">
+{% block extra_js %}
+<script>
+    // Pass HERE API key and properties data to JavaScript
+    window.HERE_API_KEY = '{{ here_api_key }}';
+    window.propertiesData = {{ properties_json|safe }};
+</script>
+<script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+<script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+<script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+<script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+        window.propertiesData.forEach(property => {
+            addPropertyMarker(property);
+        });
+    });
+</script>
 {% endblock %}
