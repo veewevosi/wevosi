@@ -9,6 +9,11 @@ from PIL import Image
 from datetime import datetime, timedelta
 import uuid
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -30,13 +35,11 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_picture(file):
-    # Generate a unique filename
     random_hex = uuid.uuid4().hex
     _, f_ext = os.path.splitext(file.filename)
     picture_filename = random_hex + f_ext
     picture_path = os.path.join(app.config['UPLOAD_FOLDER'], picture_filename)
     
-    # Resize and save the image
     output_size = (400, 400)
     i = Image.open(file)
     i.thumbnail(output_size)
@@ -47,9 +50,11 @@ def save_picture(file):
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        return User.query.get(int(user_id))
+        user = User.query.get(int(user_id))
+        logger.debug(f"Loading user with ID {user_id}: {'Found' if user else 'Not found'}")
+        return user
     except SQLAlchemyError as e:
-        app.logger.error(f"Database error loading user: {str(e)}")
+        logger.error(f"Database error loading user {user_id}: {str(e)}")
         return None
 
 @app.route('/')
@@ -64,13 +69,17 @@ def signup():
         password = request.form['password']
         
         try:
+            logger.debug(f"Attempting to create new user with email: {email}")
+            
             user = User.query.filter_by(username=username).first()
             if user:
+                logger.debug(f"Username {username} already exists")
                 flash('Username already exists')
                 return redirect(url_for('signup'))
             
             user = User.query.filter_by(email=email).first()
             if user:
+                logger.debug(f"Email {email} already registered")
                 flash('Email already registered')
                 return redirect(url_for('signup'))
             
@@ -82,15 +91,17 @@ def signup():
             
             db.session.add(new_user)
             db.session.commit()
+            logger.info(f"Successfully created new user with email: {email}")
             
             flash('Account created successfully')
             return redirect(url_for('login'))
-        except OperationalError:
+        except OperationalError as e:
+            logger.error(f"Database connection error during signup: {str(e)}")
             flash('Database connection error. Please try again later.')
             return redirect(url_for('signup'))
         except SQLAlchemyError as e:
+            logger.error(f"Database error in signup: {str(e)}")
             flash('An error occurred while creating your account. Please try again.')
-            app.logger.error(f"Database error in signup: {str(e)}")
             return redirect(url_for('signup'))
     
     return render_template('signup.html')
@@ -102,18 +113,27 @@ def login():
         password = request.form['password']
         
         try:
+            logger.debug(f"Attempting login for email: {email}")
             user = User.query.filter_by(email=email).first()
-            if user and check_password_hash(user.password_hash, password):
-                login_user(user)
-                return redirect(url_for('account'))
+            
+            if user:
+                logger.debug(f"User found: {user.username}")
+                if check_password_hash(user.password_hash, password):
+                    login_user(user)
+                    logger.info(f"Successful login for user: {user.username}")
+                    return redirect(url_for('account'))
+                else:
+                    logger.debug("Invalid password provided")
+            else:
+                logger.debug("No user found with provided email")
             
             flash('Invalid email or password')
-        except OperationalError:
+        except OperationalError as e:
+            logger.error(f"Database connection error during login: {str(e)}")
             flash('Database connection error. Please try again later.')
-            app.logger.error("Database connection error during login")
         except SQLAlchemyError as e:
+            logger.error(f"Database error in login: {str(e)}")
             flash('An error occurred. Please try again later.')
-            app.logger.error(f"Database error in login: {str(e)}")
     
     return render_template('login.html')
 
@@ -152,17 +172,19 @@ def upload_profile_picture():
             picture_path = save_picture(file)
             current_user.profile_picture = picture_path
             db.session.commit()
+            logger.info(f"Successfully updated profile picture for user: {current_user.username}")
             flash('Profile picture updated successfully')
-        except OperationalError:
+        except OperationalError as e:
+            logger.error(f"Database connection error during profile picture upload: {str(e)}")
             flash('Database connection error. Please try again later.')
             return redirect(url_for('account'))
         except SQLAlchemyError as e:
+            logger.error(f"Database error in profile picture upload: {str(e)}")
             flash('Error updating profile picture. Please try again.')
-            app.logger.error(f"Database error in profile picture upload: {str(e)}")
             return redirect(url_for('account'))
         except Exception as e:
+            logger.error(f"Error in profile picture upload: {str(e)}")
             flash('Error uploading profile picture')
-            app.logger.error(f"Error in profile picture upload: {str(e)}")
     else:
         flash('Invalid file type. Please upload a valid image file (PNG, JPG, JPEG, GIF)')
     
@@ -176,5 +198,18 @@ def reset_request():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        try:
+            logger.info("Attempting to create database tables...")
+            db.create_all()
+            logger.info("Database tables created successfully")
+            
+            # Verify table structure
+            inspector = db.inspect(db.engine)
+            for table_name in inspector.get_table_names():
+                logger.info(f"Table: {table_name}")
+                for column in inspector.get_columns(table_name):
+                    logger.info(f"  Column: {column['name']} ({column['type']})")
+        except Exception as e:
+            logger.error(f"Error creating database tables: {str(e)}")
+            
     app.run(host='0.0.0.0', port=5000)
