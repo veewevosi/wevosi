@@ -177,11 +177,9 @@ def upload_profile_picture():
         except OperationalError as e:
             logger.error(f"Database connection error during profile picture upload: {str(e)}")
             flash('Database connection error. Please try again later.')
-            return redirect(url_for('account'))
         except SQLAlchemyError as e:
             logger.error(f"Database error in profile picture upload: {str(e)}")
             flash('Error updating profile picture. Please try again.')
-            return redirect(url_for('account'))
         except Exception as e:
             logger.error(f"Error in profile picture upload: {str(e)}")
             flash('Error uploading profile picture')
@@ -189,6 +187,100 @@ def upload_profile_picture():
         flash('Invalid file type. Please upload a valid image file (PNG, JPG, JPEG, GIF)')
     
     return redirect(url_for('account'))
+
+@app.route('/reset_request', methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        try:
+            email = request.form['email']
+            user = User.query.filter_by(email=email).first()
+            
+            if user:
+                token = user.get_reset_token()
+                reset_url = url_for('reset_password', token=token, _external=True)
+                logger.info(f"Password reset requested for user: {user.email}")
+                flash('Password reset instructions have been sent to your email.')
+            else:
+                logger.debug(f"Password reset requested for non-existent email: {email}")
+                flash('If an account exists with that email, you will receive reset instructions.')
+            
+            return redirect(url_for('login'))
+        except Exception as e:
+            logger.error(f"Error in reset_request: {str(e)}")
+            flash('An error occurred. Please try again later.')
+    
+    return render_template('reset_request.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    user = User.verify_reset_token(token)
+    if user is None:
+        flash('Invalid or expired reset token')
+        return redirect(url_for('reset_request'))
+    
+    if request.method == 'POST':
+        try:
+            password = request.form['password']
+            user.password_hash = generate_password_hash(password)
+            db.session.commit()
+            logger.info(f"Password reset successful for user: {user.email}")
+            flash('Your password has been updated! You can now log in.')
+            return redirect(url_for('login'))
+        except Exception as e:
+            logger.error(f"Error in reset_password: {str(e)}")
+            flash('An error occurred. Please try again.')
+    
+    return render_template('reset_password.html')
+
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    try:
+        user = User.verify_email_token(token)
+        if user is None:
+            flash('Invalid or expired verification link.')
+            return render_template('verify_email.html', verified=False)
+        
+        if not user.email_verified:
+            user.email_verified = True
+            db.session.commit()
+            logger.info(f"Email verified for user: {user.email}")
+        
+        return render_template('verify_email.html', verified=True)
+    except Exception as e:
+        logger.error(f"Error in verify_email: {str(e)}")
+        return render_template('verify_email.html', verified=False, error_message='An error occurred during verification.')
+
+@app.route('/resend_verification', methods=['GET', 'POST'])
+def resend_verification():
+    if current_user.is_authenticated and current_user.email_verified:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        try:
+            email = request.form['email']
+            user = User.query.filter_by(email=email).first()
+            
+            if user and not user.email_verified:
+                token = user.get_verification_token()
+                verification_url = url_for('verify_email', token=token, _external=True)
+                logger.info(f"Verification email resent to: {user.email}")
+                flash('A new verification email has been sent.')
+            else:
+                logger.debug(f"Verification resend requested for invalid email: {email}")
+                flash('If an account exists with that email, you will receive a verification link.')
+            
+            return redirect(url_for('login'))
+        except Exception as e:
+            logger.error(f"Error in resend_verification: {str(e)}")
+            flash('An error occurred. Please try again later.')
+    
+    return render_template('resend_verification.html')
 
 @app.route('/debug/users')
 def debug_users():
@@ -224,5 +316,5 @@ if __name__ == '__main__':
                     logger.info(f"  Column: {column['name']} ({column['type']})")
         except Exception as e:
             logger.error(f"Error creating database tables: {str(e)}")
-            
+    
     app.run(host='0.0.0.0', port=5000)
