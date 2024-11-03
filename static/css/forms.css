@@ -254,6 +254,16 @@
     text-decoration: underline;
 }
 
+/* Reset Password link color for login page */
+.form-container p a[href="/reset_request"] {
+    color: #fe994e;
+    text-decoration: none;
+}
+
+.form-container p a[href="/reset_request"]:hover {
+    text-decoration: underline;
+}
+
 /* Welcome container styles */
 .welcome-container {
     text-align: center;
