@@ -243,3 +243,13 @@
 .action-btn span {
     margin-left: 0.5rem;
 }
+
+/* Sign In link color for signup page */
+.form-container p a[href="/login"] {
+    color: #fe994e;
+    text-decoration: none;
+}
+
+.form-container p a[href="/login"]:hover {
+    text-decoration: underline;
+}
