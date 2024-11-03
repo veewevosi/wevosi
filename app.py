@@ -66,7 +66,14 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     return render_template('index.html')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -128,7 +135,7 @@ def login():
                 if check_password_hash(user.password_hash, password):
                     login_user(user)
                     logger.info(f"Successful login for user: {user.username}")
-                    return redirect(url_for('account'))
+                    return redirect(url_for('dashboard'))
                 else:
                     logger.debug("Invalid password provided")
             else:
