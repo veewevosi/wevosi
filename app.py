@@ -155,6 +155,65 @@ def logout():
 def account():
     return render_template('account.html')
 
+@app.route('/settings')
+@login_required
+def settings():
+    return render_template('settings.html')
+
+@app.route('/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    try:
+        username = request.form['username']
+        email = request.form['email']
+        
+        user_check = User.query.filter(User.username == username, User.id != current_user.id).first()
+        if user_check:
+            flash('Username already taken')
+            return redirect(url_for('settings'))
+        
+        email_check = User.query.filter(User.email == email, User.id != current_user.id).first()
+        if email_check:
+            flash('Email already registered')
+            return redirect(url_for('settings'))
+        
+        current_user.username = username
+        current_user.email = email
+        db.session.commit()
+        
+        flash('Profile updated successfully')
+        return redirect(url_for('settings'))
+    except Exception as e:
+        logger.error(f"Error updating profile: {str(e)}")
+        flash('An error occurred while updating your profile')
+        return redirect(url_for('settings'))
+
+@app.route('/change_password', methods=['POST'])
+@login_required
+def change_password():
+    try:
+        current_password = request.form['current_password']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+        
+        if not check_password_hash(current_user.password_hash, current_password):
+            flash('Current password is incorrect')
+            return redirect(url_for('settings'))
+        
+        if new_password != confirm_password:
+            flash('New passwords do not match')
+            return redirect(url_for('settings'))
+        
+        current_user.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+        
+        flash('Password updated successfully')
+        return redirect(url_for('settings'))
+    except Exception as e:
+        logger.error(f"Error changing password: {str(e)}")
+        flash('An error occurred while changing your password')
+        return redirect(url_for('settings'))
+
 @app.route('/upload_profile_picture', methods=['POST'])
 @login_required
 def upload_profile_picture():
@@ -169,13 +228,11 @@ def upload_profile_picture():
     
     if file and allowed_file(file.filename):
         try:
-            # Delete old profile picture if it exists
             if current_user.profile_picture:
                 old_picture_path = os.path.join(app.root_path, 'static', current_user.profile_picture)
                 if os.path.exists(old_picture_path):
                     os.remove(old_picture_path)
             
-            # Save new profile picture
             picture_path = save_picture(file)
             current_user.profile_picture = picture_path
             db.session.commit()
@@ -315,7 +372,6 @@ if __name__ == '__main__':
             db.create_all()
             logger.info("Database tables created successfully")
             
-            # Verify table structure
             inspector = db.inspect(db.engine)
             for table_name in inspector.get_table_names():
                 logger.info(f"Table: {table_name}")
