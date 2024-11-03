@@ -28,6 +28,9 @@
             <a href="{{ url_for('account') }}" class="action-btn">
                 <span>Profile</span>
             </a>
+            <a href="{{ url_for('properties') }}" class="action-btn">
+                <span>Properties</span>
+            </a>
             {% if not current_user.email_verified %}
             <a href="{{ url_for('resend_verification') }}" class="action-btn warning">
                 <span>Verify Email</span>

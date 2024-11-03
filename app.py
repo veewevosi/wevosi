@@ -12,19 +12,16 @@ import uuid
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Create upload folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Initialize database with retry logic
 with app.app_context():
     try:
         db.connect_with_retry(app)
@@ -76,6 +73,11 @@ def index():
 def dashboard():
     return render_template('dashboard.html')
 
+@app.route('/properties')
+@login_required
+def properties():
+    return render_template('properties.html')
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -107,7 +109,6 @@ def signup():
             db.session.add(new_user)
             db.session.commit()
             
-            # Generate verification token and send verification email
             token = new_user.get_verification_token()
             verification_url = url_for('verify_email', token=token, _external=True)
             
