@@ -4,6 +4,25 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/properties.css') }}">
+<style>
+/* Additional page-specific styles */
+.properties-content {
+    margin-top: 2rem;
+}
+
+.property-card .property-details:last-child {
+    border-bottom: none;
+}
+
+.no-properties-message a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.no-properties-message a:hover {
+    text-decoration: underline;
+}
+</style>
 {% endblock %}
 
 {% block content %}
