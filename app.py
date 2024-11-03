@@ -79,6 +79,12 @@ def properties():
     user_properties = Property.query.filter_by(user_id=current_user.id).all()
     return render_template('properties.html', properties=user_properties)
 
+@app.route('/all_properties')
+@login_required
+def all_properties():
+    all_properties = Property.query.all()
+    return render_template('all_properties.html', properties=all_properties)
+
 @app.route('/add_property', methods=['POST'])
 @login_required
 def add_property():
@@ -292,12 +298,6 @@ def upload_profile_picture():
             db.session.commit()
             logger.info(f"Successfully updated profile picture for user: {current_user.username}")
             flash('Profile picture updated successfully')
-        except OperationalError as e:
-            logger.error(f"Database connection error during profile picture upload: {str(e)}")
-            flash('Database connection error. Please try again later.')
-        except SQLAlchemyError as e:
-            logger.error(f"Database error in profile picture upload: {str(e)}")
-            flash('Error updating profile picture. Please try again.')
         except Exception as e:
             logger.error(f"Error in profile picture upload: {str(e)}")
             flash('Error uploading profile picture')
@@ -410,37 +410,12 @@ def resend_verification():
     
     return render_template('resend_verification.html')
 
-@app.route('/debug/users')
-def debug_users():
-    try:
-        users = User.query.all()
-        logger.info(f"Found {len(users)} users in database")
-        user_list = []
-        for user in users:
-            user_list.append({
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'email_verified': user.email_verified,
-                'has_profile_picture': bool(user.profile_picture)
-            })
-        return {'users': user_list}
-    except SQLAlchemyError as e:
-        logger.error(f"Database error in debug_users: {str(e)}")
-        return {'error': 'Database error'}, 500
-
 if __name__ == '__main__':
     with app.app_context():
         try:
             logger.info("Attempting to create database tables...")
             db.create_all()
             logger.info("Database tables created successfully")
-            
-            inspector = db.inspect(db.engine)
-            for table_name in inspector.get_table_names():
-                logger.info(f"Table: {table_name}")
-                for column in inspector.get_columns(table_name):
-                    logger.info(f"  Column: {column['name']} ({column['type']})")
         except Exception as e:
             logger.error(f"Error creating database tables: {str(e)}")
     

@@ -1,249 +1,31 @@
-{% extends "base.html" %}
-
-{% block title %}Properties - WEVOSI{% endblock %}
-
-{% block content %}
-<div class="properties-container">
-    <div class="properties-header">
-        <h2>Your Properties</h2>
-        <p class="properties-subtitle">Manage your real estate portfolio</p>
-    </div>
-
-    <div class="properties-content">
-        {% if properties %}
-            <div class="properties-grid">
-                {% for property in properties %}
-                    <div class="property-card">
-                        <h3>{{ property.property_name }}</h3>
-                        <p>{{ property.street_address }}</p>
-                        <p>{{ property.city }}, {{ property.state }} {{ property.zipcode }}</p>
-                        <p>Type: {{ property.type }}</p>
-                        <p>Size: {{ property.acres }} acres ({{ property.square_feet }} sq ft)</p>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="no-properties-message">
-                <h3>No Properties Listed Yet</h3>
-                <p>Start building your real estate portfolio by adding your first property.</p>
-            </div>
-        {% endif %}
-        <button class="btn add-property-btn" onclick="openPropertyModal()">Add Property</button>
+[Previous content remains the same until line 31]
+        <div class="button-group">
+            <button class="btn add-property-btn" onclick="openPropertyModal()">Add Property</button>
+            <a href="{{ url_for('all_properties') }}" class="btn view-all-btn">View All Properties</a>
+        </div>
     </div>
 </div>
 
-<!-- Property Modal -->
-<div id="propertyModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closePropertyModal()">&times;</span>
-        <h2>Add New Property</h2>
-        <form id="propertyForm" method="POST" action="{{ url_for('add_property') }}">
-            <div class="form-group">
-                <label for="property_name">Property Name</label>
-                <input type="text" id="property_name" name="property_name" required>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="latitude">Latitude</label>
-                    <input type="number" step="any" id="latitude" name="latitude" required>
-                </div>
-                <div class="form-group">
-                    <label for="longitude">Longitude</label>
-                    <input type="number" step="any" id="longitude" name="longitude" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="street_address">Street Address</label>
-                <input type="text" id="street_address" name="street_address" required>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="city">City</label>
-                    <input type="text" id="city" name="city" required>
-                </div>
-                <div class="form-group">
-                    <label for="state">State</label>
-                    <input type="text" id="state" name="state" required>
-                </div>
-                <div class="form-group">
-                    <label for="zipcode">Zipcode</label>
-                    <input type="text" id="zipcode" name="zipcode" required>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="acres">Acres</label>
-                    <input type="number" step="0.01" id="acres" name="acres" required>
-                </div>
-                <div class="form-group">
-                    <label for="square_feet">Square Feet</label>
-                    <input type="number" step="0.01" id="square_feet" name="square_feet" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="type">Property Type</label>
-                <select id="type" name="type" required>
-                    <option value="improved">Improved</option>
-                    <option value="unimproved">Unimproved</option>
-                </select>
-            </div>
-            <button type="submit" class="btn">Add Property</button>
-        </form>
-    </div>
-</div>
-{% endblock %}
+[Rest of the existing properties.html content remains the same, add this CSS to the extra_css block]
 
 {% block extra_css %}
 <style>
-    .properties-container {
-        max-width: 1000px;
-        margin: 2rem auto;
-        padding: 2rem;
+    [Previous styles remain the same]
+
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
     }
 
-    .properties-header {
-        text-align: center;
-        margin-bottom: 3rem;
-    }
-
-    .properties-subtitle {
-        color: var(--text-secondary);
-        margin-top: 0.5rem;
-    }
-
-    .properties-content {
-        background-color: var(--bg-secondary);
-        padding: 2rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .properties-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .property-card {
-        background-color: var(--bg-primary);
-        padding: 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .no-properties-message {
-        text-align: center;
-        padding: 3rem 1rem;
-    }
-
-    .no-properties-message h3 {
-        margin-bottom: 1rem;
-        color: var(--text-secondary);
-    }
-
-    .no-properties-message p {
-        margin-bottom: 2rem;
-        color: var(--text-secondary);
-    }
-
-    .add-property-btn {
+    .view-all-btn {
         background-color: var(--accent-color);
     }
 
-    /* Modal styles */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-
-    .modal-content {
-        background-color: var(--bg-secondary);
-        margin: 5% auto;
-        padding: 2rem;
-        border-radius: 8px;
-        max-width: 600px;
-        position: relative;
-    }
-
-    .close {
-        position: absolute;
-        right: 1.5rem;
-        top: 1rem;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: var(--text-secondary);
-    }
-
-    .form-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1rem;
-    }
-
-    select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid var(--bg-secondary);
-        background-color: var(--bg-primary);
-        color: var(--text-primary);
-        border-radius: 4px;
+    .button-group .btn {
+        flex: 1;
     }
 </style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-function openPropertyModal() {
-    document.getElementById('propertyModal').style.display = 'block';
-}
-
-function closePropertyModal() {
-    document.getElementById('propertyModal').style.display = 'none';
-}
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('propertyModal');
-    if (event.target == modal) {
-        modal.style.display = 'none';
-    }
-}
-
-document.getElementById('propertyForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // Basic form validation
-    const form = this;
-    const requiredFields = form.querySelectorAll('[required]');
-    let isValid = true;
-
-    requiredFields.forEach(field => {
-        if (!field.value.trim()) {
-            isValid = false;
-            showError(field, 'This field is required');
-        } else if (field.type === 'number' && isNaN(field.value)) {
-            isValid = false;
-            showError(field, 'Please enter a valid number');
-        }
-    });
-
-    if (isValid) {
-        form.submit();
-    }
-});
-
-function showError(input, message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-message';
-    errorDiv.textContent = message;
-    input.parentNode.appendChild(errorDiv);
-}
-</script>
-{% endblock %}
+[Rest of the existing properties.html content]
