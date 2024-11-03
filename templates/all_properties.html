@@ -8,22 +8,23 @@
 <style>
     .properties-layout {
         display: flex;
-        gap: 2rem;
-        margin: 2rem 0;
-        height: calc(100vh - 200px);
+        gap: 0;
+        height: calc(100vh - 75px);
+        margin: 0;
     }
     
     #mapContainer {
         flex: 0 0 70%;
         height: 100%;
-        border-radius: 8px;
-        overflow: hidden;
     }
     
     .properties-list {
         flex: 0 0 30%;
         overflow-y: auto;
-        padding-right: 1rem;
+        padding: 1rem;
+        background-color: var(--bg-secondary);
+        border-left: 1px solid var(--bg-primary);
+        height: 100%;
     }
     
     .properties-grid {
@@ -39,11 +40,11 @@
     @media (max-width: 1024px) {
         .properties-layout {
             flex-direction: column;
-            height: auto;
+            height: 100vh;
         }
         
         #mapContainer {
-            height: 400px;
+            height: 60vh;
             flex: none;
             width: 100%;
         }
@@ -51,53 +52,46 @@
         .properties-list {
             flex: none;
             width: 100%;
-            max-height: 600px;
+            height: 40vh;
+            border-left: none;
+            border-top: 1px solid var(--bg-primary);
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="properties-container">
-        <div class="properties-header">
-            <h2>All Properties</h2>
-            <p class="properties-subtitle">Browse all available properties</p>
-        </div>
-
-        <div class="properties-layout">
-            <div id="mapContainer"></div>
-            <div class="properties-list">
-                {% if properties %}
-                    <div class="properties-grid">
-                        {% for property in properties %}
-                            <div class="property-card">
-                                <h3>{{ property.property_name }}</h3>
-                                <div class="property-details">
-                                    <p><strong>Location:</strong></p>
-                                    <p>{{ property.street_address }}</p>
-                                    <p>{{ property.city }}, {{ property.state }} {{ property.zipcode }}</p>
-                                </div>
-                                <div class="property-details">
-                                    <p><strong>Property Details:</strong></p>
-                                    <p>Type: {{ property.type }}</p>
-                                    <p>{{ property.acres }} acres ({{ "{:,.0f}".format(property.square_feet) }} sq ft)</p>
-                                </div>
-                                <p class="property-owner">Listed by: {{ property.owner.username }}</p>
-                            </div>
-                        {% endfor %}
+<div class="properties-layout">
+    <div id="mapContainer"></div>
+    <div class="properties-list">
+        {% if properties %}
+            <div class="properties-grid">
+                {% for property in properties %}
+                    <div class="property-card">
+                        <h3>{{ property.property_name }}</h3>
+                        <div class="property-details">
+                            <p><strong>Location:</strong></p>
+                            <p>{{ property.street_address }}</p>
+                            <p>{{ property.city }}, {{ property.state }} {{ property.zipcode }}</p>
+                        </div>
+                        <div class="property-details">
+                            <p><strong>Property Details:</strong></p>
+                            <p>Type: {{ property.type }}</p>
+                            <p>{{ property.acres }} acres ({{ "{:,.0f}".format(property.square_feet) }} sq ft)</p>
+                        </div>
+                        <p class="property-owner">Listed by: {{ property.owner.username }}</p>
                     </div>
-                {% else %}
-                    <div class="no-properties-message">
-                        <h3>No Properties Available</h3>
-                        <p>There are currently no properties listed in the system.</p>
-                        {% if current_user.is_authenticated %}
-                            <p>Add your property by visiting the <a href="{{ url_for('properties') }}">Properties</a> page.</p>
-                        {% endif %}
-                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-properties-message">
+                <h3>No Properties Available</h3>
+                <p>There are currently no properties listed in the system.</p>
+                {% if current_user.is_authenticated %}
+                    <p>Add your property by visiting the <a href="{{ url_for('properties') }}">Properties</a> page.</p>
                 {% endif %}
             </div>
-        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
