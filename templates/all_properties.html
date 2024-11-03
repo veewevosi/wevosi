@@ -7,30 +7,51 @@
 <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
 <style>
     .properties-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+        display: flex;
         gap: 2rem;
         margin: 2rem 0;
+        height: calc(100vh - 200px);
     }
     
     #mapContainer {
-        height: 600px;
+        flex: 0 0 70%;
+        height: 100%;
         border-radius: 8px;
         overflow: hidden;
     }
     
     .properties-list {
-        max-height: 600px;
+        flex: 0 0 30%;
         overflow-y: auto;
+        padding-right: 1rem;
+    }
+    
+    .properties-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .property-card {
+        margin-bottom: 0;
     }
     
     @media (max-width: 1024px) {
         .properties-layout {
-            grid-template-columns: 1fr;
+            flex-direction: column;
+            height: auto;
         }
         
         #mapContainer {
             height: 400px;
+            flex: none;
+            width: 100%;
+        }
+        
+        .properties-list {
+            flex: none;
+            width: 100%;
+            max-height: 600px;
         }
     }
 </style>
@@ -45,6 +66,7 @@
         </div>
 
         <div class="properties-layout">
+            <div id="mapContainer"></div>
             <div class="properties-list">
                 {% if properties %}
                     <div class="properties-grid">
@@ -75,7 +97,6 @@
                     </div>
                 {% endif %}
             </div>
-            <div id="mapContainer"></div>
         </div>
     </div>
 </div>
@@ -83,7 +104,6 @@
 
 {% block extra_js %}
 <script>
-    // Pass HERE API key and properties data to JavaScript
     window.HERE_API_KEY = '{{ here_api_key }}';
     window.propertiesData = {{ properties_json|safe }};
 </script>
