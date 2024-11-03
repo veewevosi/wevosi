@@ -8,6 +8,7 @@ import os
 from PIL import Image
 from datetime import datetime, timedelta
 import uuid
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -45,7 +46,11 @@ def save_picture(file):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    try:
+        return User.query.get(int(user_id))
+    except SQLAlchemyError as e:
+        app.logger.error(f"Database error loading user: {str(e)}")
+        return None
 
 @app.route('/')
 def index():
@@ -58,27 +63,35 @@ def signup():
         email = request.form['email']
         password = request.form['password']
         
-        user = User.query.filter_by(username=username).first()
-        if user:
-            flash('Username already exists')
+        try:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                flash('Username already exists')
+                return redirect(url_for('signup'))
+            
+            user = User.query.filter_by(email=email).first()
+            if user:
+                flash('Email already registered')
+                return redirect(url_for('signup'))
+            
+            new_user = User(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password)
+            )
+            
+            db.session.add(new_user)
+            db.session.commit()
+            
+            flash('Account created successfully')
+            return redirect(url_for('login'))
+        except OperationalError:
+            flash('Database connection error. Please try again later.')
             return redirect(url_for('signup'))
-        
-        user = User.query.filter_by(email=email).first()
-        if user:
-            flash('Email already registered')
+        except SQLAlchemyError as e:
+            flash('An error occurred while creating your account. Please try again.')
+            app.logger.error(f"Database error in signup: {str(e)}")
             return redirect(url_for('signup'))
-        
-        new_user = User(
-            username=username,
-            email=email,
-            password_hash=generate_password_hash(password)
-        )
-        
-        db.session.add(new_user)
-        db.session.commit()
-        
-        flash('Account created successfully')
-        return redirect(url_for('login'))
     
     return render_template('signup.html')
 
@@ -88,12 +101,19 @@ def login():
         email = request.form['email']
         password = request.form['password']
         
-        user = User.query.filter_by(email=email).first()
-        if user and check_password_hash(user.password_hash, password):
-            login_user(user)
-            return redirect(url_for('account'))
-        
-        flash('Invalid email or password')
+        try:
+            user = User.query.filter_by(email=email).first()
+            if user and check_password_hash(user.password_hash, password):
+                login_user(user)
+                return redirect(url_for('account'))
+            
+            flash('Invalid email or password')
+        except OperationalError:
+            flash('Database connection error. Please try again later.')
+            app.logger.error("Database connection error during login")
+        except SQLAlchemyError as e:
+            flash('An error occurred. Please try again later.')
+            app.logger.error(f"Database error in login: {str(e)}")
     
     return render_template('login.html')
 
@@ -133,8 +153,16 @@ def upload_profile_picture():
             current_user.profile_picture = picture_path
             db.session.commit()
             flash('Profile picture updated successfully')
+        except OperationalError:
+            flash('Database connection error. Please try again later.')
+            return redirect(url_for('account'))
+        except SQLAlchemyError as e:
+            flash('Error updating profile picture. Please try again.')
+            app.logger.error(f"Database error in profile picture upload: {str(e)}")
+            return redirect(url_for('account'))
         except Exception as e:
             flash('Error uploading profile picture')
+            app.logger.error(f"Error in profile picture upload: {str(e)}")
     else:
         flash('Invalid file type. Please upload a valid image file (PNG, JPG, JPEG, GIF)')
     
@@ -148,6 +176,5 @@ def reset_request():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.drop_all()  # This line will be removed after successful table creation
         db.create_all()
     app.run(host='0.0.0.0', port=5000)
