@@ -1,7 +1,9 @@
-// Modal functionality
-function openPropertyModal() {
+// Make openPropertyModal function globally available
+window.openPropertyModal = function() {
     const modal = document.getElementById('propertyModal');
-    modal.style.display = 'block';
+    if (modal) {
+        modal.style.display = 'block';
+    }
 }
 
 // Close button functionality
