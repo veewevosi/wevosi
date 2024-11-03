@@ -3,7 +3,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from database import db
-from models import User
+from models import User, Property
 from email_utils import send_verification_email, send_password_reset_email
 import os
 from PIL import Image
@@ -76,7 +76,42 @@ def dashboard():
 @app.route('/properties')
 @login_required
 def properties():
-    return render_template('properties.html')
+    user_properties = Property.query.filter_by(user_id=current_user.id).all()
+    return render_template('properties.html', properties=user_properties)
+
+@app.route('/add_property', methods=['POST'])
+@login_required
+def add_property():
+    try:
+        new_property = Property(
+            property_name=request.form['property_name'],
+            longitude=float(request.form['longitude']),
+            latitude=float(request.form['latitude']),
+            street_address=request.form['street_address'],
+            city=request.form['city'],
+            state=request.form['state'],
+            zipcode=request.form['zipcode'],
+            acres=float(request.form['acres']),
+            square_feet=float(request.form['square_feet']),
+            type=request.form['type'],
+            user_id=current_user.id
+        )
+        
+        db.session.add(new_property)
+        db.session.commit()
+        flash('Property added successfully!')
+        
+    except ValueError as e:
+        flash('Please enter valid numeric values for coordinates, acres, and square feet')
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        flash('An error occurred while adding the property')
+        logger.error(f"Database error in add_property: {str(e)}")
+    except Exception as e:
+        flash('An unexpected error occurred')
+        logger.error(f"Unexpected error in add_property: {str(e)}")
+    
+    return redirect(url_for('properties'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():

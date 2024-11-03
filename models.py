@@ -2,6 +2,7 @@ from flask_login import UserMixin
 from database import db
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from flask import current_app
+from sqlalchemy.sql import func
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -12,7 +13,8 @@ class User(UserMixin, db.Model):
     reset_token_expires = db.Column(db.DateTime)
     email_verified = db.Column(db.Boolean, default=False)
     email_verification_token = db.Column(db.String(100), unique=True)
-    profile_picture = db.Column(db.String(255))  # Store the path to the profile picture
+    profile_picture = db.Column(db.String(255))
+    properties = db.relationship('Property', backref='owner', lazy=True)
 
     def get_reset_token(self):
         s = Serializer(current_app.config['SECRET_KEY'])
@@ -32,7 +34,7 @@ class User(UserMixin, db.Model):
             return None
 
     @staticmethod
-    def verify_email_token(token, expires_sec=86400):  # 24 hours
+    def verify_email_token(token, expires_sec=86400):
         s = Serializer(current_app.config['SECRET_KEY'])
         try:
             data = s.loads(token, max_age=expires_sec)
@@ -42,3 +44,22 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+class Property(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    longitude = db.Column(db.Float, nullable=False)
+    latitude = db.Column(db.Float, nullable=False)
+    street_address = db.Column(db.String(255), nullable=False)
+    city = db.Column(db.String(100), nullable=False)
+    state = db.Column(db.String(50), nullable=False)
+    zipcode = db.Column(db.String(20), nullable=False)
+    property_name = db.Column(db.String(255), nullable=False)
+    acres = db.Column(db.Float, nullable=False)
+    square_feet = db.Column(db.Float, nullable=False)
+    type = db.Column(db.String(20), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated_at = db.Column(db.DateTime(timezone=True), onupdate=func.now())
+
+    def __repr__(self):
+        return f'<Property {self.property_name}>'
