@@ -36,6 +36,11 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route('/notifications')
+@login_required
+def notifications():
+    return render_template('notifications.html')
+
 @app.route('/reset_request', methods=['GET', 'POST'])
 def reset_request():
     if current_user.is_authenticated:
