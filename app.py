@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from models import User, Company, Property
 from database import db
-from email_utils import send_password_reset_email
+from email_utils import send_verification_email, send_password_reset_email
 import os
 import logging
 
@@ -65,6 +65,40 @@ def delete_user(user_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Error deleting user'}), 500
 
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    user = User.verify_email_token(token)
+    if user:
+        if not user.email_verified:
+            user.email_verified = True
+            db.session.commit()
+            flash('Your email has been verified! You can now log in.')
+        return render_template('verify_email.html', verified=True)
+    return render_template('verify_email.html', verified=False)
+
+@app.route('/resend_verification', methods=['GET', 'POST'])
+def resend_verification():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            if user.email_verified:
+                flash('Email is already verified')
+                return redirect(url_for('login'))
+                
+            token = user.get_verification_token()
+            verification_url = url_for('verify_email', token=token, _external=True)
+            if send_verification_email(user.email, verification_url):
+                flash('Verification email has been resent')
+                return redirect(url_for('login'))
+            else:
+                flash('Error sending verification email')
+        else:
+            flash('No account found with that email address')
+    
+    return render_template('resend_verification.html')
+
 @app.route('/notifications')
 @login_required
 def notifications():
@@ -121,6 +155,9 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if user and check_password_hash(user.password_hash, password):
+            if not user.email_verified:
+                flash('Please verify your email before logging in')
+                return redirect(url_for('login'))
             login_user(user)
             next_page = request.args.get('next')
             return redirect(next_page if next_page else url_for('dashboard'))
@@ -152,10 +189,29 @@ def signup():
             email=email,
             password_hash=generate_password_hash(password)
         )
-        db.session.add(user)
-        db.session.commit()
-        flash('Account created successfully')
-        return redirect(url_for('login'))
+        
+        try:
+            db.session.add(user)
+            db.session.flush()  # Get the user ID without committing
+            
+            # Generate verification token and send email
+            token = user.get_verification_token()
+            verification_url = url_for('verify_email', token=token, _external=True)
+            
+            if send_verification_email(email, verification_url):
+                db.session.commit()
+                flash('Account created successfully. Please check your email to verify your account.')
+                return redirect(url_for('login'))
+            else:
+                db.session.rollback()
+                flash('Error sending verification email. Please try again.')
+                return redirect(url_for('signup'))
+                
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error in signup: {str(e)}")
+            flash('An error occurred during signup. Please try again.')
+            return redirect(url_for('signup'))
     
     return render_template('signup.html')
 
