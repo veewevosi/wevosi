@@ -32,7 +32,7 @@
                 <span>Properties</span>
             </a>
             {% if not current_user.email_verified %}
-            <a href="{{ url_for('resend_verification') }}" class="action-btn warning">
+            <a href="{{ url_for('reset_request') }}" class="action-btn warning">
                 <span>Verify Email</span>
             </a>
             {% endif %}
@@ -88,19 +88,19 @@
 }
 
 .dashboard-header {
-    text-align: right;  /* Align text to the right */
-    margin-bottom: 1rem;  /* Reduced margin */
-    padding: 0.5rem;  /* Reduced padding */
+    text-align: right;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
 }
 
 .dashboard-header h3 {
-    margin: 0;  /* Remove default margins */
+    margin: 0;
     font-size: 1.5rem;
     color: var(--text-primary);
 }
 
 .user-greeting {
-    margin: 0.25rem 0 0 0;  /* Reduced margin */
+    margin: 0.25rem 0 0 0;
     color: var(--text-secondary);
     font-size: 1rem;
 }
@@ -161,7 +161,7 @@ function deleteUser(userId, username) {
         .then(data => {
             if (data.success) {
                 // Remove the row from the table
-                const row = document.querySelector(`tr:has(button[onclick*="${userId}"])`);
+                const row = document.querySelector(`button[onclick*="${userId}"]`).closest('tr');
                 if (row) {
                     row.remove();
                 }

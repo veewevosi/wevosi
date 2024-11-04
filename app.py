@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
-from flask_login import LoginManager, current_user, login_required, login_user, logout_user
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from models import User, Company, Property
@@ -36,7 +36,6 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Admin required decorator
 def admin_required(f):
     @login_required
     def decorated_function(*args, **kwargs):
@@ -57,16 +56,9 @@ def delete_user(user_id):
         if not user:
             return jsonify({'success': False, 'message': 'User not found'}), 404
             
-        # Delete user's properties
         Property.query.filter_by(user_id=user_id).delete()
-        
-        # Remove user from companies
         user.member_of_companies = []
-        
-        # Delete companies owned by user
         Company.query.filter_by(owner_id=user_id).delete()
-        
-        # Delete the user
         db.session.delete(user)
         db.session.commit()
         
@@ -127,27 +119,16 @@ def login():
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
-        try:
-            email = request.form.get('email')
-            password = request.form.get('password')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user)
+            return redirect(url_for('dashboard'))
             
-            if not email or not password:
-                flash('Please provide both email and password')
-                return render_template('login.html')
-            
-            user = User.query.filter_by(email=email).first()
-            
-            if user and check_password_hash(user.password_hash, password):
-                login_user(user)
-                return redirect(url_for('dashboard'))
-            else:
-                flash('Invalid email or password')
-                return render_template('login.html')
-                
-        except Exception as e:
-            logger.error(f"Login error: {str(e)}")
-            flash('An error occurred during login. Please try again.')
-            return render_template('login.html')
+        flash('Invalid email or password')
     
     return render_template('login.html')
 
