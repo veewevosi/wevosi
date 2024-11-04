@@ -28,6 +28,50 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route('/settings', methods=['GET'])
+@login_required
+def settings():
+    return render_template('settings.html')
+
+@app.route('/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        
+        if username != current_user.username and User.query.filter_by(username=username).first():
+            flash('Username already exists')
+            return redirect(url_for('settings'))
+            
+        if email != current_user.email and User.query.filter_by(email=email).first():
+            flash('Email already registered')
+            return redirect(url_for('settings'))
+            
+        current_user.username = username
+        current_user.email = email
+        db.session.commit()
+        flash('Profile updated successfully')
+    return redirect(url_for('settings'))
+
+@app.route('/change_password', methods=['POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not check_password_hash(current_user.password_hash, current_password):
+            flash('Current password is incorrect')
+        elif new_password != confirm_password:
+            flash('New passwords do not match')
+        else:
+            current_user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            flash('Password changed successfully')
+    return redirect(url_for('settings'))
+
 @app.route('/reset_request', methods=['GET', 'POST'])
 def reset_request():
     if current_user.is_authenticated:
