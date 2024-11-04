@@ -44,6 +44,7 @@
             <div class="company-selector">
                 <form id="companyForm" action="{{ url_for('update_company_membership') }}" method="POST">
                     <div class="form-group">
+                        <input type="text" id="companySearchInput" placeholder="Search companies..." class="company-search">
                         <select id="companySelect" name="company_id" class="company-dropdown" onchange="handleCompanyChange()">
                             <option value="">Select a Company</option>
                             {% for company in companies %}
@@ -102,6 +103,26 @@
 <style>
 .company-selector {
     margin-top: 1.5rem;
+}
+
+.company-search {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--bg-secondary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.company-search:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.company-option-hidden {
+    display: none;
 }
 
 .company-dropdown {
@@ -217,6 +238,23 @@ textarea:focus {
 document.getElementById('profile_picture').addEventListener('change', function() {
     if (this.files && this.files[0]) {
         document.querySelector('button[type="submit"]').style.display = 'inline-block';
+    }
+});
+
+document.getElementById('companySearchInput').addEventListener('input', function(e) {
+    const searchText = e.target.value.toLowerCase();
+    const select = document.getElementById('companySelect');
+    const options = select.getElementsByTagName('option');
+    
+    for (let option of options) {
+        if (option.value === '') continue; // Skip the placeholder option
+        
+        const text = option.textContent.toLowerCase();
+        if (text.includes(searchText)) {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+        }
     }
 });
 
