@@ -276,6 +276,51 @@ def update_company_membership():
             
     return redirect(url_for('account'))
 
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    return render_template('settings.html')
+
+@app.route('/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    username = request.form.get('username')
+    email = request.form.get('email')
+    
+    if User.query.filter_by(username=username).first() and username != current_user.username:
+        flash('Username already exists')
+        return redirect(url_for('settings'))
+        
+    if User.query.filter_by(email=email).first() and email != current_user.email:
+        flash('Email already registered')
+        return redirect(url_for('settings'))
+    
+    current_user.username = username
+    current_user.email = email
+    db.session.commit()
+    flash('Profile updated successfully')
+    return redirect(url_for('settings'))
+
+@app.route('/change_password', methods=['POST'])
+@login_required
+def change_password():
+    current_password = request.form.get('current_password')
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+    
+    if not check_password_hash(current_user.password_hash, current_password):
+        flash('Current password is incorrect')
+        return redirect(url_for('settings'))
+        
+    if new_password != confirm_password:
+        flash('New passwords do not match')
+        return redirect(url_for('settings'))
+        
+    current_user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
+    flash('Password changed successfully')
+    return redirect(url_for('settings'))
+
 @app.route('/user/<username>')
 def public_profile(username):
     profile_user = User.query.filter_by(username=username).first_or_404()
