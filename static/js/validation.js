@@ -22,10 +22,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 isValid = false;
             }
             
-            // Validate username if present
+            // Validate username (First and Last Name)
             const usernameInput = form.querySelector('input[name="username"]');
             if (usernameInput && usernameInput.value.length < 3) {
-                showError(usernameInput, 'Username must be at least 3 characters long');
+                showError(usernameInput, 'First and Last Name must be at least 3 characters long');
                 isValid = false;
             }
             
