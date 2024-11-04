@@ -56,28 +56,12 @@
         </div>
         {% endif %}
 
-        <div class="properties-section">
-            <h2>Properties</h2>
-            {% if properties %}
-                <div class="properties-grid">
-                    {% for property in properties %}
-                        <div class="property-card">
-                            <h3>{{ property.property_name }}</h3>
-                            <div class="property-details">
-                                <p><strong>Location:</strong></p>
-                                <p>{{ property.city }}, {{ property.state }}</p>
-                            </div>
-                            <div class="property-details">
-                                <p><strong>Property Details:</strong></p>
-                                <p>Type: {{ property.type }}</p>
-                                <p>{{ property.acres }} acres</p>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="no-properties">No properties listed yet.</p>
-            {% endif %}
+        <div class="qr-code-section">
+            <h2>Profile QR Code</h2>
+            <div class="qr-code">
+                <img src="data:image/png;base64,{{ qr_code }}" alt="Profile QR Code">
+                <p class="qr-description">Scan to view this profile</p>
+            </div>
         </div>
     </div>
 </div>
@@ -165,27 +149,24 @@
     color: var(--text-primary);
 }
 
-.companies-section,
-.properties-section {
+.companies-section {
     margin-bottom: 3rem;
 }
 
 .companies-section h2,
-.properties-section h2,
-.contact-section h2 {
+.contact-section h2,
+.qr-code-section h2 {
     color: var(--text-primary);
     margin-bottom: 1.5rem;
     font-size: 1.5rem;
 }
 
-.companies-grid,
-.properties-grid {
+.companies-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
 }
 
-.property-card,
 .company-card {
     background-color: var(--bg-primary);
     padding: 1.5rem;
@@ -193,20 +174,9 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.property-card h3,
 .company-card h3 {
     color: var(--accent-color);
     margin-bottom: 1rem;
-}
-
-.property-details {
-    margin: 0.8rem 0;
-    padding: 0.8rem 0;
-    border-top: 1px solid var(--bg-secondary);
-}
-
-.property-details:last-child {
-    border-bottom: none;
 }
 
 .company-description {
@@ -224,10 +194,31 @@
     border-top: 1px solid var(--bg-secondary);
 }
 
-.no-properties {
+.qr-code-section {
     text-align: center;
-    color: var(--text-secondary);
     padding: 2rem;
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+}
+
+.qr-code {
+    display: inline-block;
+    padding: 1rem;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+}
+
+.qr-code img {
+    width: 200px;
+    height: 200px;
+    display: block;
+    margin: 0 auto;
+}
+
+.qr-description {
+    color: var(--text-secondary);
+    margin-top: 1rem;
+    font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
@@ -235,8 +226,7 @@
         padding: 1rem;
     }
     
-    .companies-grid,
-    .properties-grid {
+    .companies-grid {
         grid-template-columns: 1fr;
     }
     
