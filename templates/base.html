@@ -11,8 +11,14 @@
 <body>
     <header class="header">
         <a href="{{ url_for('index') }}" class="logo">WEVOSI</a>
+        <button class="hamburger-menu" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
         <nav class="nav-links">
             {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
                 <a href="{{ url_for('notifications') }}">Notifications</a>
                 <a href="{{ url_for('account') }}">Account</a>
                 <a href="{{ url_for('settings') }}">Settings</a>
