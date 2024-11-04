@@ -213,6 +213,12 @@ def mark_all_notifications_read():
     db.session.commit()
     return jsonify({'success': True})
 
+@app.route('/properties')
+@login_required
+def properties():
+    user_properties = Property.query.filter_by(user_id=current_user.id).all()
+    return render_template('properties.html', properties=user_properties)
+
 @app.route('/user/<username>')
 def public_profile(username):
     profile_user = User.query.filter_by(username=username).first_or_404()
