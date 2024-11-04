@@ -162,6 +162,27 @@ def account():
     companies = Company.query.all()
     return render_template('account.html', companies=companies)
 
+@app.route('/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        
+        if username != current_user.username and User.query.filter_by(username=username).first():
+            flash('Username already exists')
+            return redirect(url_for('settings'))
+            
+        if email != current_user.email and User.query.filter_by(email=email).first():
+            flash('Email already registered')
+            return redirect(url_for('settings'))
+            
+        current_user.username = username
+        current_user.email = email
+        db.session.commit()
+        flash('Profile updated successfully')
+    return redirect(url_for('settings'))
+
 @app.route('/upload_profile_picture', methods=['POST'])
 @login_required
 def upload_profile_picture():
