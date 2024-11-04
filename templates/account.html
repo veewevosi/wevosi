@@ -34,7 +34,186 @@
             <p>{{ current_user.email }}</p>
         </div>
     </div>
+
+    <div class="companies-section">
+        <h3>Company Memberships</h3>
+        {% if companies %}
+            <div class="companies-grid">
+                {% for company in companies %}
+                    <div class="company-card {% if company in current_user.member_of_companies %}active{% endif %}">
+                        <div class="company-info">
+                            <h4>{{ company.name }}</h4>
+                            <p>{{ company.description }}</p>
+                            <p class="company-meta">Owner: {{ company.owner.username }}</p>
+                        </div>
+                        <form action="{{ url_for('update_company_membership') }}" method="POST">
+                            <input type="hidden" name="company_id" value="{{ company.id }}">
+                            {% if company in current_user.member_of_companies %}
+                                <input type="hidden" name="action" value="leave">
+                                <button type="submit" class="btn leave-btn">Leave Company</button>
+                            {% else %}
+                                <input type="hidden" name="action" value="join">
+                                <button type="submit" class="btn join-btn">Join Company</button>
+                            {% endif %}
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-companies">
+                <p>No companies available to join at this time.</p>
+                {% if current_user.role == 'admin' %}
+                    <a href="#" class="btn create-company-btn" onclick="openCompanyModal()">Create Company</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
 </div>
+
+<!-- Company Creation Modal -->
+{% if current_user.role == 'admin' %}
+<div id="companyModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeCompanyModal()">&times;</span>
+        <h2>Create New Company</h2>
+        <form action="{{ url_for('create_company') }}" method="POST" class="company-form">
+            <div class="form-group">
+                <label for="company_name">Company Name</label>
+                <input type="text" id="company_name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="company_description">Description</label>
+                <textarea id="company_description" name="description" rows="4" required></textarea>
+            </div>
+            
+            <button type="submit" class="btn">Create Company</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.companies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.company-card {
+    background-color: var(--bg-primary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--bg-secondary);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.company-card.active {
+    border-color: var(--accent-color);
+}
+
+.company-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.company-info {
+    margin-bottom: 1rem;
+}
+
+.company-info h4 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.company-info p {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.company-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 1rem;
+}
+
+.join-btn, .leave-btn {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.leave-btn {
+    background-color: var(--error-color);
+}
+
+.no-companies {
+    text-align: center;
+    padding: 2rem;
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+}
+
+.create-company-btn {
+    margin-top: 1rem;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: relative;
+    background-color: var(--bg-secondary);
+    margin: 5vh auto;
+    padding: 2rem;
+    width: 90%;
+    max-width: 600px;
+    border-radius: 8px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.close-btn {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: var(--text-primary);
+}
+
+textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--bg-secondary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 4px;
+    resize: vertical;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -44,5 +223,27 @@ document.getElementById('profile_picture').addEventListener('change', function()
         document.querySelector('button[type="submit"]').style.display = 'inline-block';
     }
 });
+
+function openCompanyModal() {
+    const modal = document.getElementById('companyModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+function closeCompanyModal() {
+    const modal = document.getElementById('companyModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('companyModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
 </script>
 {% endblock %}

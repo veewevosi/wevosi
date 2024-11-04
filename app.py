@@ -1,490 +1,100 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
+from flask import Flask, render_template, redirect, url_for, request, flash
+from flask_login import LoginManager, current_user, login_required
+from models import User, Company, Property
 from database import db
-from models import User, Property
-from email_utils import send_verification_email, send_password_reset_email
 import os
-from PIL import Image
-from datetime import datetime, timedelta
-import uuid
-from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import logging
-import json
-from functools import wraps
 
+# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
-app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+# Initialize database
+db.init_app(app)
 
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-with app.app_context():
-    try:
-        db.connect_with_retry(app)
-        logger.info("Database connection established")
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {str(e)}")
-        raise
-
+# Initialize Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role != 'admin':
-            return jsonify({'success': False, 'message': 'Admin access required'}), 403
-        return f(*args, **kwargs)
-    return decorated_function
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def save_picture(file):
-    random_hex = uuid.uuid4().hex
-    _, f_ext = os.path.splitext(file.filename)
-    picture_filename = random_hex + f_ext
-    picture_path = os.path.join(app.config['UPLOAD_FOLDER'], picture_filename)
-    
-    output_size = (400, 400)
-    i = Image.open(file)
-    i.thumbnail(output_size)
-    i.save(picture_path)
-    
-    return os.path.join('uploads', picture_filename)
-
 @login_manager.user_loader
 def load_user(user_id):
-    try:
-        user = User.query.get(int(user_id))
-        logger.debug(f"Loading user with ID {user_id}: {'Found' if user else 'Not found'}")
-        return user
-    except SQLAlchemyError as e:
-        logger.error(f"Database error loading user {user_id}: {str(e)}")
-        return None
-
-@app.route('/')
-def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    return render_template('index.html')
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    try:
-        users = User.query.all() if current_user.role == 'admin' else None
-        return render_template('dashboard.html', users=users)
-    except Exception as e:
-        logger.error(f"Error in dashboard route: {str(e)}")
-        flash('Error loading dashboard data')
-        return redirect(url_for('index'))
-
-@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
-@login_required
-@admin_required
-def delete_user(user_id):
-    try:
-        if user_id == current_user.id:
-            return jsonify({'success': False, 'message': 'Cannot delete your own account'}), 400
-        
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        # Delete user's properties first
-        Property.query.filter_by(user_id=user_id).delete()
-        
-        # Delete the user's profile picture if it exists
-        if user.profile_picture:
-            picture_path = os.path.join(app.root_path, 'static', user.profile_picture)
-            if os.path.exists(picture_path):
-                os.remove(picture_path)
-        
-        # Delete the user
-        db.session.delete(user)
-        db.session.commit()
-        
-        logger.info(f"User {user.username} deleted by admin {current_user.username}")
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        logger.error(f"Error deleting user: {str(e)}")
-        db.session.rollback()
-        return jsonify({'success': False, 'message': 'An error occurred while deleting the user'}), 500
-
-@app.route('/properties')
-@login_required
-def properties():
-    user_properties = Property.query.filter_by(user_id=current_user.id).all()
-    return render_template('properties.html', properties=user_properties)
-
-@app.route('/all_properties')
-@login_required
-def all_properties():
-    try:
-        properties = Property.query.all()
-        properties_data = [{
-            'name': p.property_name,
-            'address': f"{p.street_address}, {p.city}, {p.state} {p.zipcode}",
-            'type': p.type,
-            'acres': p.acres,
-            'latitude': p.latitude,
-            'longitude': p.longitude
-        } for p in properties]
-        
-        return render_template(
-            'all_properties.html',
-            properties=properties,
-            properties_json=json.dumps(properties_data),
-            here_api_key=os.environ.get('HERE_API_KEY')
-        )
-    except Exception as e:
-        logger.error(f"Error in all_properties: {str(e)}")
-        flash('Error loading properties')
-        return redirect(url_for('dashboard'))
-
-@app.route('/add_property', methods=['POST'])
-@login_required
-def add_property():
-    try:
-        new_property = Property(
-            property_name=request.form['property_name'],
-            longitude=float(request.form['longitude']),
-            latitude=float(request.form['latitude']),
-            street_address=request.form['street_address'],
-            city=request.form['city'],
-            state=request.form['state'],
-            zipcode=request.form['zipcode'],
-            acres=float(request.form['acres']),
-            square_feet=float(request.form['square_feet']),
-            type=request.form['type'],
-            user_id=current_user.id
-        )
-        
-        db.session.add(new_property)
-        db.session.commit()
-        flash('Property added successfully!')
-        
-    except ValueError as e:
-        flash('Please enter valid numeric values for coordinates, acres, and square feet')
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        flash('An error occurred while adding the property')
-        logger.error(f"Database error in add_property: {str(e)}")
-    except Exception as e:
-        flash('An unexpected error occurred')
-        logger.error(f"Unexpected error in add_property: {str(e)}")
-    
-    return redirect(url_for('properties'))
-
-@app.route('/signup', methods=['GET', 'POST'])
-def signup():
-    if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        
-        try:
-            logger.debug(f"Attempting to create new user with email: {email}")
-            
-            user = User.query.filter_by(username=username).first()
-            if user:
-                logger.debug(f"Username {username} already exists")
-                flash('Username already exists')
-                return redirect(url_for('signup'))
-            
-            user = User.query.filter_by(email=email).first()
-            if user:
-                logger.debug(f"Email {email} already registered")
-                flash('Email already registered')
-                return redirect(url_for('signup'))
-            
-            new_user = User(
-                username=username,
-                email=email,
-                password_hash=generate_password_hash(password)
-            )
-            
-            db.session.add(new_user)
-            db.session.commit()
-            
-            token = new_user.get_verification_token()
-            verification_url = url_for('verify_email', token=token, _external=True)
-            
-            if send_verification_email(email, verification_url):
-                logger.info(f"Successfully created new user and sent verification email to: {email}")
-                flash('Account created successfully! Please check your email to verify your account.')
-            else:
-                logger.error(f"Failed to send verification email to: {email}")
-                flash('Account created, but failed to send verification email. Please request a new verification email.')
-            
-            return redirect(url_for('login'))
-            
-        except OperationalError as e:
-            logger.error(f"Database connection error during signup: {str(e)}")
-            flash('Database connection error. Please try again later.')
-            return redirect(url_for('signup'))
-        except SQLAlchemyError as e:
-            logger.error(f"Database error in signup: {str(e)}")
-            flash('An error occurred while creating your account. Please try again.')
-            return redirect(url_for('signup'))
-    
-    return render_template('signup.html')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        
-        try:
-            logger.debug(f"Attempting login for email: {email}")
-            user = User.query.filter_by(email=email).first()
-            
-            if user:
-                logger.debug(f"User found: {user.username}")
-                if check_password_hash(user.password_hash, password):
-                    login_user(user)
-                    logger.info(f"Successful login for user: {user.username}")
-                    return redirect(url_for('dashboard'))
-                else:
-                    logger.debug("Invalid password provided")
-            else:
-                logger.debug("No user found with provided email")
-            
-            flash('Invalid email or password')
-        except OperationalError as e:
-            logger.error(f"Database connection error during login: {str(e)}")
-            flash('Database connection error. Please try again later.')
-        except SQLAlchemyError as e:
-            logger.error(f"Database error in login: {str(e)}")
-            flash('An error occurred. Please try again later.')
-    
-    return render_template('login.html')
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('index'))
+    return User.query.get(int(user_id))
 
 @app.route('/account')
 @login_required
 def account():
-    return render_template('account.html')
+    # Get all available companies and the ones user is a member of
+    all_companies = Company.query.all()
+    return render_template('account.html', companies=all_companies)
 
-@app.route('/settings')
+@app.route('/update_company_membership', methods=['POST'])
 @login_required
-def settings():
-    return render_template('settings.html')
-
-@app.route('/update_profile', methods=['POST'])
-@login_required
-def update_profile():
+def update_company_membership():
     try:
-        username = request.form['username']
-        email = request.form['email']
+        company_id = request.form.get('company_id')
+        action = request.form.get('action')  # 'join' or 'leave'
         
-        user_check = User.query.filter(User.username == username, User.id != current_user.id).first()
-        if user_check:
-            flash('Username already taken')
-            return redirect(url_for('settings'))
+        if not company_id or not action:
+            flash('Invalid request')
+            return redirect(url_for('account'))
         
-        email_check = User.query.filter(User.email == email, User.id != current_user.id).first()
-        if email_check:
-            flash('Email already registered')
-            return redirect(url_for('settings'))
+        company = Company.query.get(company_id)
+        if not company:
+            flash('Company not found')
+            return redirect(url_for('account'))
         
-        current_user.username = username
-        current_user.email = email
+        if action == 'join':
+            if company not in current_user.member_of_companies:
+                current_user.member_of_companies.append(company)
+                flash(f'Successfully joined {company.name}')
+        elif action == 'leave':
+            if company in current_user.member_of_companies:
+                current_user.member_of_companies.remove(company)
+                flash(f'Successfully left {company.name}')
+        
         db.session.commit()
-        
-        flash('Profile updated successfully')
-        return redirect(url_for('settings'))
     except Exception as e:
-        logger.error(f"Error updating profile: {str(e)}")
-        flash('An error occurred while updating your profile')
-        return redirect(url_for('settings'))
-
-@app.route('/change_password', methods=['POST'])
-@login_required
-def change_password():
-    try:
-        current_password = request.form['current_password']
-        new_password = request.form['new_password']
-        confirm_password = request.form['confirm_password']
+        logger.error(f"Error updating company membership: {str(e)}")
+        flash('An error occurred while updating company membership')
         
-        if not check_password_hash(current_user.password_hash, current_password):
-            flash('Current password is incorrect')
-            return redirect(url_for('settings'))
-        
-        if new_password != confirm_password:
-            flash('New passwords do not match')
-            return redirect(url_for('settings'))
-        
-        current_user.password_hash = generate_password_hash(new_password)
-        db.session.commit()
-        
-        flash('Password updated successfully')
-        return redirect(url_for('settings'))
-    except Exception as e:
-        logger.error(f"Error changing password: {str(e)}")
-        flash('An error occurred while changing your password')
-        return redirect(url_for('settings'))
-
-@app.route('/upload_profile_picture', methods=['POST'])
-@login_required
-def upload_profile_picture():
-    if 'profile_picture' not in request.files:
-        flash('No file selected')
-        return redirect(url_for('account'))
-    
-    file = request.files['profile_picture']
-    if file.filename == '':
-        flash('No file selected')
-        return redirect(url_for('account'))
-    
-    if file and allowed_file(file.filename):
-        try:
-            if current_user.profile_picture:
-                old_picture_path = os.path.join(app.root_path, 'static', current_user.profile_picture)
-                if os.path.exists(old_picture_path):
-                    os.remove(old_picture_path)
-            
-            picture_path = save_picture(file)
-            current_user.profile_picture = picture_path
-            db.session.commit()
-            logger.info(f"Successfully updated profile picture for user: {current_user.username}")
-            flash('Profile picture updated successfully')
-        except Exception as e:
-            logger.error(f"Error in profile picture upload: {str(e)}")
-            flash('Error uploading profile picture')
-    else:
-        flash('Invalid file type. Please upload a valid image file (PNG, JPG, JPEG, GIF)')
-    
     return redirect(url_for('account'))
 
-@app.route('/reset_request', methods=['GET', 'POST'])
-def reset_request():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    
-    if request.method == 'POST':
-        try:
-            email = request.form['email']
-            user = User.query.filter_by(email=email).first()
-            
-            if user:
-                token = user.get_reset_token()
-                reset_url = url_for('reset_password', token=token, _external=True)
-                
-                if send_password_reset_email(email, reset_url):
-                    logger.info(f"Password reset email sent to: {user.email}")
-                    flash('Password reset instructions have been sent to your email.')
-                else:
-                    logger.error(f"Failed to send password reset email to: {email}")
-                    flash('Failed to send reset email. Please try again later.')
-            else:
-                logger.debug(f"Password reset requested for non-existent email: {email}")
-                flash('If an account exists with that email, you will receive reset instructions.')
-            
-            return redirect(url_for('login'))
-        except Exception as e:
-            logger.error(f"Error in reset_request: {str(e)}")
-            flash('An error occurred. Please try again later.')
-    
-    return render_template('reset_request.html')
-
-@app.route('/reset_password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    
-    user = User.verify_reset_token(token)
-    if user is None:
-        flash('Invalid or expired reset token')
-        return redirect(url_for('reset_request'))
-    
-    if request.method == 'POST':
-        try:
-            password = request.form['password']
-            user.password_hash = generate_password_hash(password)
-            db.session.commit()
-            logger.info(f"Password reset successful for user: {user.email}")
-            flash('Your password has been updated! You can now log in.')
-            return redirect(url_for('login'))
-        except Exception as e:
-            logger.error(f"Error in reset_password: {str(e)}")
-            flash('An error occurred. Please try again.')
-    
-    return render_template('reset_password.html')
-
-@app.route('/verify_email/<token>')
-def verify_email(token):
+@app.route('/create_company', methods=['POST'])
+@login_required
+def create_company():
+    if current_user.role != 'admin':
+        flash('Only administrators can create companies')
+        return redirect(url_for('account'))
+        
     try:
-        user = User.verify_email_token(token)
-        if user is None:
-            flash('Invalid or expired verification link.')
-            return render_template('verify_email.html', verified=False)
+        name = request.form.get('name')
+        description = request.form.get('description')
         
-        if not user.email_verified:
-            user.email_verified = True
-            db.session.commit()
-            logger.info(f"Email verified for user: {user.email}")
+        if not name or not description:
+            flash('Company name and description are required')
+            return redirect(url_for('account'))
+            
+        company = Company(
+            name=name,
+            description=description,
+            owner_id=current_user.id
+        )
         
-        return render_template('verify_email.html', verified=True)
+        db.session.add(company)
+        db.session.commit()
+        
+        flash(f'Successfully created company: {name}')
     except Exception as e:
-        logger.error(f"Error in verify_email: {str(e)}")
-        return render_template('verify_email.html', verified=False, error_message='An error occurred during verification.')
-
-@app.route('/resend_verification', methods=['GET', 'POST'])
-def resend_verification():
-    if current_user.is_authenticated and current_user.email_verified:
-        return redirect(url_for('index'))
-    
-    if request.method == 'POST':
-        try:
-            email = request.form['email']
-            user = User.query.filter_by(email=email).first()
-            
-            if user and not user.email_verified:
-                token = user.get_verification_token()
-                verification_url = url_for('verify_email', token=token, _external=True)
-                
-                if send_verification_email(email, verification_url):
-                    logger.info(f"Verification email resent to: {user.email}")
-                    flash('A new verification email has been sent.')
-                else:
-                    logger.error(f"Failed to send verification email to: {email}")
-                    flash('Failed to send verification email. Please try again later.')
-            else:
-                logger.debug(f"Verification resend requested for invalid email: {email}")
-                flash('If an account exists with that email, you will receive a verification link.')
-            
-            return redirect(url_for('login'))
-        except Exception as e:
-            logger.error(f"Error in resend_verification: {str(e)}")
-            flash('An error occurred. Please try again later.')
-    
-    return render_template('resend_verification.html')
+        logger.error(f"Error creating company: {str(e)}")
+        flash('An error occurred while creating the company')
+        
+    return redirect(url_for('account'))
 
 if __name__ == '__main__':
-    with app.app_context():
-        try:
-            logger.info("Attempting to create database tables...")
-            db.create_all()
-            logger.info("Database tables created successfully")
-        except Exception as e:
-            logger.error(f"Error creating database tables: {str(e)}")
-    
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
