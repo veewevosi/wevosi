@@ -145,6 +145,10 @@ def reset_password(token):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Temporarily add db.create_all() to create missing columns
+    with app.app_context():
+        db.create_all()
+        
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
@@ -192,9 +196,8 @@ def signup():
         
         try:
             db.session.add(user)
-            db.session.flush()  # Get the user ID without committing
+            db.session.flush()
             
-            # Generate verification token and send email
             token = user.get_verification_token()
             verification_url = url_for('verify_email', token=token, _external=True)
             
@@ -248,13 +251,11 @@ def update_phone():
     if request.method == 'POST':
         phone_number = request.form.get('phone_number')
         
-        # Basic phone number validation
         phone_number = ''.join(filter(str.isdigit, phone_number))
         if len(phone_number) != 10:
             flash('Please enter a valid 10-digit phone number')
             return redirect(url_for('account'))
             
-        # Format phone number as XXX-XXX-XXXX
         formatted_phone = f"{phone_number[:3]}-{phone_number[3:6]}-{phone_number[6:]}"
         current_user.phone_number = formatted_phone
         db.session.commit()

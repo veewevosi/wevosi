@@ -21,7 +21,7 @@ class User(UserMixin, db.Model):
     email_verification_token = db.Column(db.String(100), unique=True)
     profile_picture = db.Column(db.String(255))
     role = db.Column(db.String(20), default='user')
-    phone_number = db.Column(db.String(20))  # Added phone number field
+    phone_number = db.Column(db.String(20), nullable=True)  # Updated to be nullable
     properties = db.relationship('Property', backref='owner', lazy=True)
     # Add relationships with Company
     owned_companies = db.relationship('Company', backref='owner', lazy=True)
