@@ -183,6 +183,24 @@ def update_profile():
         flash('Profile updated successfully')
     return redirect(url_for('settings'))
 
+@app.route('/change_password', methods=['POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not check_password_hash(current_user.password_hash, current_password):
+            flash('Current password is incorrect')
+        elif new_password != confirm_password:
+            flash('New passwords do not match')
+        else:
+            current_user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            flash('Password changed successfully')
+    return redirect(url_for('settings'))
+
 @app.route('/upload_profile_picture', methods=['POST'])
 @login_required
 def upload_profile_picture():
