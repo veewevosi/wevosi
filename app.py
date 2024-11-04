@@ -162,6 +162,42 @@ def account():
     companies = Company.query.all()
     return render_template('account.html', companies=companies)
 
+@app.route('/upload_profile_picture', methods=['POST'])
+@login_required
+def upload_profile_picture():
+    if 'profile_picture' not in request.files:
+        flash('No file selected')
+        return redirect(url_for('account'))
+        
+    file = request.files['profile_picture']
+    if file.filename == '':
+        flash('No file selected')
+        return redirect(url_for('account'))
+        
+    if file and allowed_file(file.filename):
+        try:
+            # Secure the filename and save the file
+            filename = secure_filename(file.filename)
+            # Add timestamp or random string to filename to avoid conflicts
+            filename = f"{os.urandom(16).hex()}.{filename.rsplit('.', 1)[1].lower()}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            # Save the file
+            file.save(filepath)
+            
+            # Update user's profile picture path in database
+            current_user.profile_picture = f"uploads/{filename}"
+            db.session.commit()
+            
+            flash('Profile picture updated successfully')
+        except Exception as e:
+            logger.error(f"Error uploading profile picture: {str(e)}")
+            flash('Error uploading profile picture')
+    else:
+        flash('Invalid file type. Please use PNG, JPG, JPEG, or GIF')
+        
+    return redirect(url_for('account'))
+
 @app.route('/update_company_membership', methods=['POST'])
 @login_required
 def update_company_membership():
