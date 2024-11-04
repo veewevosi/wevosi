@@ -19,6 +19,43 @@
     </div>
 
     <div class="profile-content">
+        <div class="contact-section">
+            <h2>Contact Information</h2>
+            <div class="contact-details">
+                <div class="contact-item">
+                    <span class="contact-label">Email:</span>
+                    <span class="contact-value">{{ profile_user.email }}</span>
+                </div>
+                {% if profile_user.phone_number %}
+                <div class="contact-item">
+                    <span class="contact-label">Phone:</span>
+                    <span class="contact-value">{{ profile_user.phone_number }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if companies %}
+        <div class="companies-section">
+            <h2>Company Affiliations</h2>
+            <div class="companies-grid">
+                {% for company in companies %}
+                    <div class="company-card">
+                        <h3>{{ company.name }}</h3>
+                        <p class="company-description">{{ company.description }}</p>
+                        <p class="company-role">
+                            {% if company.owner_id == profile_user.id %}
+                                Owner
+                            {% else %}
+                                Member
+                            {% endif %}
+                        </p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="properties-section">
             <h2>Properties</h2>
             {% if properties %}
@@ -42,20 +79,6 @@
                 <p class="no-properties">No properties listed yet.</p>
             {% endif %}
         </div>
-
-        {% if companies %}
-        <div class="companies-section">
-            <h2>Companies</h2>
-            <div class="companies-grid">
-                {% for company in companies %}
-                    <div class="company-card">
-                        <h3>{{ company.name }}</h3>
-                        <p>{{ company.description }}</p>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -110,20 +133,53 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.properties-section,
-.companies-section {
+.contact-section {
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+}
+
+.contact-details {
+    margin-top: 1.5rem;
+}
+
+.contact-item {
+    display: flex;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--bg-secondary);
+}
+
+.contact-item:last-child {
+    border-bottom: none;
+}
+
+.contact-label {
+    color: var(--text-secondary);
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.contact-value {
+    color: var(--text-primary);
+}
+
+.companies-section,
+.properties-section {
     margin-bottom: 3rem;
 }
 
+.companies-section h2,
 .properties-section h2,
-.companies-section h2 {
+.contact-section h2 {
     color: var(--text-primary);
     margin-bottom: 1.5rem;
     font-size: 1.5rem;
 }
 
-.properties-grid,
-.companies-grid {
+.companies-grid,
+.properties-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
@@ -153,16 +209,25 @@
     border-bottom: none;
 }
 
+.company-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.company-role {
+    color: var(--accent-color);
+    font-size: 0.9rem;
+    font-weight: bold;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--bg-secondary);
+}
+
 .no-properties {
     text-align: center;
     color: var(--text-secondary);
     padding: 2rem;
-}
-
-.company-card p {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.5;
 }
 
 @media (max-width: 768px) {
@@ -170,13 +235,22 @@
         padding: 1rem;
     }
     
-    .properties-grid,
-    .companies-grid {
+    .companies-grid,
+    .properties-grid {
         grid-template-columns: 1fr;
     }
     
     .profile-content {
         padding: 1rem;
+    }
+    
+    .contact-item {
+        flex-direction: column;
+    }
+    
+    .contact-label {
+        width: auto;
+        margin-bottom: 0.25rem;
     }
 }
 </style>
