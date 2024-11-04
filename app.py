@@ -145,6 +145,49 @@ def signup():
     
     return render_template('signup.html')
 
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    user = User.verify_email_token(token)
+    if user is None:
+        flash('Invalid or expired verification token')
+        return render_template('verify_email.html', verified=False)
+        
+    if user.email_verified:
+        flash('Email already verified')
+        return redirect(url_for('login'))
+        
+    user.email_verified = True
+    db.session.commit()
+    flash('Your email has been verified! You can now log in.')
+    return render_template('verify_email.html', verified=True)
+
+@app.route('/resend_verification', methods=['GET', 'POST'])
+def resend_verification():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            if user.email_verified:
+                flash('Email already verified. Please log in.')
+                return redirect(url_for('login'))
+                
+            token = user.get_verification_token()
+            verification_url = url_for('verify_email', token=token, _external=True)
+            
+            if send_verification_email(email, verification_url):
+                flash('A new verification email has been sent.')
+                return redirect(url_for('login'))
+            else:
+                flash('Error sending verification email. Please try again.')
+        else:
+            flash('No account found with that email address.')
+            
+    return render_template('resend_verification.html')
+
 @app.route('/reset_request', methods=['GET', 'POST'])
 def reset_request():
     if current_user.is_authenticated:
@@ -238,6 +281,32 @@ def properties():
     user_properties = Property.query.filter_by(user_id=current_user.id).all()
     return render_template('properties.html', properties=user_properties)
 
+@app.route('/add_property', methods=['POST'])
+@login_required
+def add_property():
+    try:
+        new_property = Property(
+            property_name=request.form.get('property_name'),
+            street_address=request.form.get('street_address'),
+            city=request.form.get('city'),
+            state=request.form.get('state'),
+            zipcode=request.form.get('zipcode'),
+            longitude=float(request.form.get('longitude')),
+            latitude=float(request.form.get('latitude')),
+            acres=float(request.form.get('acres')),
+            square_feet=float(request.form.get('square_feet')),
+            type=request.form.get('type'),
+            user_id=current_user.id
+        )
+        db.session.add(new_property)
+        db.session.commit()
+        flash('Property added successfully')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding property: {str(e)}")
+        flash('Error adding property. Please try again.')
+    return redirect(url_for('properties'))
+
 @app.route('/all_properties')
 @login_required
 def all_properties():
@@ -260,6 +329,36 @@ def all_properties():
 def account():
     user_companies = Company.query.all()
     return render_template('account.html', companies=user_companies)
+
+@app.route('/create_company', methods=['POST'])
+@login_required
+def create_company():
+    if current_user.role != 'admin':
+        abort(403)
+        
+    name = request.form.get('name')
+    description = request.form.get('description')
+    
+    if Company.query.filter_by(name=name).first():
+        flash('Company name already exists')
+        return redirect(url_for('account'))
+        
+    company = Company(
+        name=name,
+        description=description,
+        owner_id=current_user.id
+    )
+    
+    try:
+        db.session.add(company)
+        db.session.commit()
+        flash('Company created successfully')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating company: {str(e)}")
+        flash('Error creating company. Please try again.')
+        
+    return redirect(url_for('account'))
 
 @app.route('/update_phone', methods=['POST'])
 @login_required
