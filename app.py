@@ -126,6 +126,56 @@ def signup():
     
     return render_template('signup.html')
 
+@app.route('/reset_request', methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            token = user.get_reset_token()
+            reset_url = url_for('reset_password', token=token, _external=True)
+            
+            if send_password_reset_email(email, reset_url):
+                flash('Password reset instructions have been sent to your email.')
+                return redirect(url_for('login'))
+            else:
+                flash('Error sending password reset email. Please try again.')
+                return redirect(url_for('reset_request'))
+        else:
+            flash('No account found with that email address.')
+            return redirect(url_for('reset_request'))
+            
+    return render_template('reset_request.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    user = User.verify_reset_token(token)
+    if user is None:
+        flash('Invalid or expired reset token')
+        return redirect(url_for('reset_request'))
+        
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if password != confirm_password:
+            flash('Passwords do not match')
+            return redirect(url_for('reset_password', token=token))
+            
+        user.password_hash = generate_password_hash(password)
+        db.session.commit()
+        flash('Your password has been updated! You can now log in.')
+        return redirect(url_for('login'))
+        
+    return render_template('reset_password.html')
+
 @app.route('/logout')
 @login_required
 def logout():
