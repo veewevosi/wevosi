@@ -30,6 +30,7 @@
                         <th>Email</th>
                         <th>Status</th>
                         <th>Role</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,6 +40,13 @@
                         <td>{{ user.email }}</td>
                         <td>{{ "Verified" if user.email_verified else "Not Verified" }}</td>
                         <td>{{ user.role }}</td>
+                        <td>
+                            {% if user.id != current_user.id %}
+                            <button class="delete-btn" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                Delete
+                            </button>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -104,5 +112,52 @@ th {
 tr:hover {
     background-color: var(--bg-primary);
 }
+
+.delete-btn {
+    background-color: var(--error-color);
+    color: var(--text-primary);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+}
+
+.delete-btn:hover {
+    opacity: 0.9;
+}
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteUser(userId, username) {
+    if (confirm(`Are you sure you want to delete user ${username}?`)) {
+        fetch(`/admin/delete_user/${userId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove the row from the table
+                const row = document.querySelector(`tr:has(button[onclick*="${userId}"])`);
+                if (row) {
+                    row.remove();
+                }
+                // Show success message
+                alert('User deleted successfully');
+            } else {
+                alert(data.message || 'Failed to delete user');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while deleting the user');
+        });
+    }
+}
+</script>
 {% endblock %}

@@ -12,6 +12,7 @@ import uuid
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import logging
 import json
+from functools import wraps
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -20,6 +21,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -35,7 +38,13 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            return jsonify({'success': False, 'message': 'Admin access required'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -79,6 +88,39 @@ def dashboard():
         logger.error(f"Error in dashboard route: {str(e)}")
         flash('Error loading dashboard data')
         return redirect(url_for('index'))
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_user(user_id):
+    try:
+        if user_id == current_user.id:
+            return jsonify({'success': False, 'message': 'Cannot delete your own account'}), 400
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        # Delete user's properties first
+        Property.query.filter_by(user_id=user_id).delete()
+        
+        # Delete the user's profile picture if it exists
+        if user.profile_picture:
+            picture_path = os.path.join(app.root_path, 'static', user.profile_picture)
+            if os.path.exists(picture_path):
+                os.remove(picture_path)
+        
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        logger.info(f"User {user.username} deleted by admin {current_user.username}")
+        return jsonify({'success': True})
+    
+    except Exception as e:
+        logger.error(f"Error deleting user: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'An error occurred while deleting the user'}), 500
 
 @app.route('/properties')
 @login_required
