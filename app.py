@@ -36,6 +36,47 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# Admin required decorator
+def admin_required(f):
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if not current_user.role == 'admin':
+            return jsonify({'success': False, 'message': 'Permission denied'}), 403
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+@admin_required
+def delete_user(user_id):
+    try:
+        if user_id == current_user.id:
+            return jsonify({'success': False, 'message': 'Cannot delete yourself'}), 400
+            
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+            
+        # Delete user's properties
+        Property.query.filter_by(user_id=user_id).delete()
+        
+        # Remove user from companies
+        user.member_of_companies = []
+        
+        # Delete companies owned by user
+        Company.query.filter_by(owner_id=user_id).delete()
+        
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'User deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting user: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Error deleting user'}), 500
+
 @app.route('/notifications')
 @login_required
 def notifications():
@@ -220,16 +261,12 @@ def upload_profile_picture():
         
     if file and allowed_file(file.filename):
         try:
-            # Secure the filename and save the file
             filename = secure_filename(file.filename)
-            # Add timestamp or random string to filename to avoid conflicts
             filename = f"{os.urandom(16).hex()}.{filename.rsplit('.', 1)[1].lower()}"
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             
-            # Save the file
             file.save(filepath)
             
-            # Update user's profile picture path in database
             current_user.profile_picture = f"uploads/{filename}"
             db.session.commit()
             
