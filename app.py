@@ -36,87 +36,33 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-@app.route('/reset_request', methods=['GET', 'POST'])
-def reset_request():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    
-    if request.method == 'POST':
-        email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
-        
-        if user:
-            token = user.get_reset_token()
-            reset_url = url_for('reset_password', token=token, _external=True)
-            send_password_reset_email(user.email, reset_url)
-            flash('Password reset instructions sent to your email')
-            return redirect(url_for('login'))
-        else:
-            flash('No account found with that email address')
-    
-    return render_template('reset_request.html')
-
-@app.route('/reset_password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-        
-    user = User.verify_reset_token(token)
-    if not user:
-        flash('Invalid or expired reset token')
-        return redirect(url_for('reset_request'))
-        
-    if request.method == 'POST':
-        password = request.form.get('password')
-        user.password_hash = generate_password_hash(password)
-        db.session.commit()
-        flash('Password has been updated! You can now log in')
-        return redirect(url_for('login'))
-        
-    return render_template('reset_password.html')
-
-@app.route('/upload_profile_picture', methods=['POST'])
-@login_required
-def upload_profile_picture():
-    if 'profile_picture' not in request.files:
-        flash('No file selected')
-        return redirect(url_for('account'))
-    
-    file = request.files['profile_picture']
-    if file.filename == '':
-        flash('No file selected')
-        return redirect(url_for('account'))
-        
-    if file and allowed_file(file.filename):
-        try:
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            current_user.profile_picture = f'uploads/{filename}'
-            db.session.commit()
-            flash('Profile picture updated successfully')
-        except Exception as e:
-            flash('Error uploading file')
-            logger.error(f"Error uploading profile picture: {str(e)}")
-    else:
-        flash('Invalid file type')
-        
-    return redirect(url_for('account'))
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        user = User.query.filter_by(email=email).first()
-        
-        if user and check_password_hash(user.password_hash, password):
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid email or password')
+        try:
+            email = request.form.get('email')
+            password = request.form.get('password')
+            
+            if not email or not password:
+                flash('Please provide both email and password')
+                return render_template('login.html')
+            
+            user = User.query.filter_by(email=email).first()
+            
+            if user and check_password_hash(user.password_hash, password):
+                login_user(user)
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Invalid email or password')
+                return render_template('login.html')
+                
+        except Exception as e:
+            logger.error(f"Login error: {str(e)}")
+            flash('An error occurred during login. Please try again.')
+            return render_template('login.html')
     
     return render_template('login.html')
 
@@ -215,6 +161,12 @@ def change_password():
 def account():
     companies = Company.query.all()
     return render_template('account.html', companies=companies)
+
+@app.route('/properties')
+@login_required
+def properties():
+    user_properties = Property.query.filter_by(user_id=current_user.id).all()
+    return render_template('properties.html', properties=user_properties)
 
 @app.route('/update_company_membership', methods=['POST'])
 @login_required
