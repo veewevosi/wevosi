@@ -33,6 +33,16 @@
             <label>Email</label>
             <p>{{ current_user.email }}</p>
         </div>
+
+        <div class="detail-group">
+            <label>Mobile Phone</label>
+            <form action="{{ url_for('update_phone') }}" method="POST" class="phone-form">
+                <input type="tel" id="phone_number" name="phone_number" 
+                       value="{{ current_user.phone_number or '' }}" 
+                       placeholder="Enter your phone number">
+                <button type="submit" class="btn update-phone-btn">Update Phone</button>
+            </form>
+        </div>
     </div>
 
     <div class="companies-section">
@@ -179,6 +189,33 @@
     display: inline-block;
 }
 
+/* Phone number input styles */
+.phone-form {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.phone-form input[type="tel"] {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid var(--bg-secondary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.phone-form input[type="tel"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.update-phone-btn {
+    padding: 0.75rem 1.5rem;
+    white-space: nowrap;
+}
+
 /* Modal styles */
 .modal {
     display: none;
@@ -323,6 +360,20 @@ window.onclick = function(event) {
         modal.style.display = 'none';
     }
 }
+
+// Phone number validation
+document.getElementById('phone_number').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 10) {
+        value = value.slice(0, 10);
+    }
+    if (value.length >= 6) {
+        value = value.slice(0, 3) + '-' + value.slice(3, 6) + '-' + value.slice(6);
+    } else if (value.length >= 3) {
+        value = value.slice(0, 3) + '-' + value.slice(3);
+    }
+    e.target.value = value;
+});
 
 // Initialize company details on page load
 document.addEventListener('DOMContentLoaded', function() {

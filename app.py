@@ -242,6 +242,25 @@ def account():
     companies = Company.query.all()
     return render_template('account.html', companies=companies)
 
+@app.route('/update_phone', methods=['POST'])
+@login_required
+def update_phone():
+    if request.method == 'POST':
+        phone_number = request.form.get('phone_number')
+        
+        # Basic phone number validation
+        phone_number = ''.join(filter(str.isdigit, phone_number))
+        if len(phone_number) != 10:
+            flash('Please enter a valid 10-digit phone number')
+            return redirect(url_for('account'))
+            
+        # Format phone number as XXX-XXX-XXXX
+        formatted_phone = f"{phone_number[:3]}-{phone_number[3:6]}-{phone_number[6:]}"
+        current_user.phone_number = formatted_phone
+        db.session.commit()
+        flash('Phone number updated successfully')
+    return redirect(url_for('account'))
+
 @app.route('/update_profile', methods=['POST'])
 @login_required
 def update_profile():
