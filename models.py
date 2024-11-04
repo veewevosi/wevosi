@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     email_verified = db.Column(db.Boolean, default=False)
     email_verification_token = db.Column(db.String(100), unique=True)
     profile_picture = db.Column(db.String(255))
+    role = db.Column(db.String(20), default='user')  # Added role field
     properties = db.relationship('Property', backref='owner', lazy=True)
 
     def get_reset_token(self):
