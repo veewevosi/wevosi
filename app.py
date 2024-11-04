@@ -3,6 +3,7 @@ from flask_login import LoginManager, current_user, login_required, login_user, 
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import User, Company, Property
 from database import db
+from email_utils import send_password_reset_email
 import os
 import logging
 
@@ -26,6 +27,46 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+@app.route('/reset_request', methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            token = user.get_reset_token()
+            reset_url = url_for('reset_password', token=token, _external=True)
+            if send_password_reset_email(user.email, reset_url):
+                flash('Password reset instructions have been sent to your email.')
+            else:
+                flash('Error sending password reset email. Please try again later.')
+        else:
+            flash('No account found with that email address.')
+            
+    return render_template('reset_request.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    user = User.verify_reset_token(token)
+    if not user:
+        flash('Invalid or expired reset token')
+        return redirect(url_for('reset_request'))
+        
+    if request.method == 'POST':
+        password = request.form.get('password')
+        user.password_hash = generate_password_hash(password)
+        db.session.commit()
+        flash('Your password has been updated! You can now log in.')
+        return redirect(url_for('login'))
+        
+    return render_template('reset_password.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
