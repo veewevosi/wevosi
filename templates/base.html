@@ -20,6 +20,8 @@
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('dashboard') }}">Dashboard</a>
                 <a href="{{ url_for('notifications') }}">Notifications</a>
+                <a href="{{ url_for('properties') }}">Properties</a>
+                <a href="{{ url_for('all_properties') }}">All Properties</a>
                 <a href="{{ url_for('account') }}">Account</a>
                 <a href="{{ url_for('settings') }}">Settings</a>
                 <a href="{{ url_for('logout') }}">Logout</a>
