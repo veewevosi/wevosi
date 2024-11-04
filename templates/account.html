@@ -37,6 +37,9 @@
 
     <div class="companies-section">
         <h3>Company Memberships</h3>
+        {% if current_user.role == 'admin' %}
+            <a href="#" class="btn create-company-btn" onclick="openCompanyModal()">Create Company</a>
+        {% endif %}
         {% if companies %}
             <div class="companies-grid">
                 {% for company in companies %}
@@ -65,9 +68,6 @@
         {% else %}
             <div class="no-companies">
                 <p>No companies available to join at this time.</p>
-                {% if current_user.role == 'admin' %}
-                    <a href="#" class="btn create-company-btn" onclick="openCompanyModal()">Create Company</a>
-                {% endif %}
             </div>
         {% endif %}
     </div>
@@ -162,7 +162,8 @@
 }
 
 .create-company-btn {
-    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+    display: inline-block;
 }
 
 /* Modal styles */
