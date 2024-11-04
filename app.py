@@ -72,7 +72,13 @@ def index():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html')
+    try:
+        users = User.query.all() if current_user.role == 'admin' else None
+        return render_template('dashboard.html', users=users)
+    except Exception as e:
+        logger.error(f"Error in dashboard route: {str(e)}")
+        flash('Error loading dashboard data')
+        return redirect(url_for('index'))
 
 @app.route('/properties')
 @login_required
