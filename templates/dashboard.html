@@ -32,7 +32,7 @@
                 <span>Properties</span>
             </a>
             {% if not current_user.email_verified %}
-            <a href="{{ url_for('reset_request') }}" class="action-btn warning">
+            <a href="{{ url_for('resend_verification') }}" class="action-btn warning">
                 <span>Verify Email</span>
             </a>
             {% endif %}
@@ -154,18 +154,18 @@ function deleteUser(userId, username) {
         fetch(`/admin/delete_user/${userId}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
-            }
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Remove the row from the table
-                const row = document.querySelector(`button[onclick*="${userId}"]`).closest('tr');
+                const row = document.querySelector(`tr:has(button[onclick*="${userId}"])`);
                 if (row) {
                     row.remove();
                 }
-                // Show success message
                 alert('User deleted successfully');
             } else {
                 alert(data.message || 'Failed to delete user');
