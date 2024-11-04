@@ -41,29 +41,30 @@
             <a href="#" class="btn create-company-btn" onclick="openCompanyModal()">Create Company</a>
         {% endif %}
         {% if companies %}
-            <div class="companies-grid">
-                {% for company in companies %}
-                    <div class="company-card {% if company in current_user.member_of_companies %}active{% endif %}">
-                        <div class="company-info">
-                            <h4>{{ company.name }}</h4>
-                            <p>{{ company.description }}</p>
-                            <p class="company-meta">Owner: {{ company.owner.username }}</p>
-                        </div>
-                        {% if company in current_user.member_of_companies %}
-                            <button onclick="confirmLeaveCompany('{{ company.id }}', '{{ company.name }}')" class="btn leave-btn">Leave Company</button>
-                            <form id="leaveForm{{ company.id }}" action="{{ url_for('update_company_membership') }}" method="POST" style="display: none;">
-                                <input type="hidden" name="company_id" value="{{ company.id }}">
-                                <input type="hidden" name="action" value="leave">
-                            </form>
-                        {% else %}
-                            <form action="{{ url_for('update_company_membership') }}" method="POST">
-                                <input type="hidden" name="company_id" value="{{ company.id }}">
-                                <input type="hidden" name="action" value="join">
-                                <button type="submit" class="btn join-btn">Join Company</button>
-                            </form>
-                        {% endif %}
+            <div class="company-selector">
+                <form id="companyForm" action="{{ url_for('update_company_membership') }}" method="POST">
+                    <div class="form-group">
+                        <select id="companySelect" name="company_id" class="company-dropdown" onchange="handleCompanyChange()">
+                            <option value="">Select a Company</option>
+                            {% for company in companies %}
+                                <option value="{{ company.id }}" 
+                                    {% if company in current_user.member_of_companies %}selected{% endif %}
+                                    data-member="{{ 'true' if company in current_user.member_of_companies else 'false' }}"
+                                    data-name="{{ company.name }}"
+                                    data-description="{{ company.description }}"
+                                    data-owner="{{ company.owner.username }}">
+                                    {{ company.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
-                {% endfor %}
+                    <div id="companyDetails" class="company-details" style="display: none;">
+                        <p id="companyDescription"></p>
+                        <p id="companyOwner" class="company-meta"></p>
+                        <input type="hidden" name="action" id="membershipAction" value="">
+                        <button type="submit" id="membershipButton" class="btn"></button>
+                    </div>
+                </form>
             </div>
         {% else %}
             <div class="no-companies">
@@ -99,41 +100,35 @@
 
 {% block extra_css %}
 <style>
-.companies-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+.company-selector {
     margin-top: 1.5rem;
 }
 
-.company-card {
-    background-color: var(--bg-primary);
-    padding: 1.5rem;
-    border-radius: 8px;
+.company-dropdown {
+    width: 100%;
+    padding: 0.75rem;
     border: 1px solid var(--bg-secondary);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.company-card.active {
-    border-color: var(--accent-color);
-}
-
-.company-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.company-info {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-size: 1rem;
     margin-bottom: 1rem;
 }
 
-.company-info h4 {
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-    font-size: 1.2rem;
+.company-dropdown:focus {
+    outline: none;
+    border-color: var(--accent-color);
 }
 
-.company-info p {
+.company-details {
+    background-color: var(--bg-primary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    border: 1px solid var(--bg-secondary);
+}
+
+.company-details p {
     color: var(--text-secondary);
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
@@ -143,22 +138,19 @@
     font-size: 0.8rem;
     color: var(--text-secondary);
     margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
-.join-btn, .leave-btn {
+#membershipButton {
     width: 100%;
-    margin-top: 1rem;
 }
 
-.leave-btn {
+#membershipButton.join-btn {
+    background-color: var(--accent-color);
+}
+
+#membershipButton.leave-btn {
     background-color: var(--error-color);
-}
-
-.no-companies {
-    text-align: center;
-    padding: 2rem;
-    background-color: var(--bg-primary);
-    border-radius: 8px;
 }
 
 .create-company-btn {
@@ -228,9 +220,34 @@ document.getElementById('profile_picture').addEventListener('change', function()
     }
 });
 
-function confirmLeaveCompany(companyId, companyName) {
-    if (confirm(`Are you sure you want to leave ${companyName}?`)) {
-        document.getElementById(`leaveForm${companyId}`).submit();
+function handleCompanyChange() {
+    const select = document.getElementById('companySelect');
+    const details = document.getElementById('companyDetails');
+    const description = document.getElementById('companyDescription');
+    const owner = document.getElementById('companyOwner');
+    const button = document.getElementById('membershipButton');
+    const actionInput = document.getElementById('membershipAction');
+
+    if (select.value) {
+        const option = select.selectedOptions[0];
+        const isMember = option.dataset.member === 'true';
+        
+        description.textContent = option.dataset.description;
+        owner.textContent = `Owner: ${option.dataset.owner}`;
+        
+        if (isMember) {
+            button.textContent = 'Leave Company';
+            button.className = 'btn leave-btn';
+            actionInput.value = 'leave';
+        } else {
+            button.textContent = 'Join Company';
+            button.className = 'btn join-btn';
+            actionInput.value = 'join';
+        }
+        
+        details.style.display = 'block';
+    } else {
+        details.style.display = 'none';
     }
 }
 
@@ -255,5 +272,10 @@ window.onclick = function(event) {
         modal.style.display = 'none';
     }
 }
+
+// Initialize company details on page load
+document.addEventListener('DOMContentLoaded', function() {
+    handleCompanyChange();
+});
 </script>
 {% endblock %}
