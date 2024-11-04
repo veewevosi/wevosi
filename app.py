@@ -8,7 +8,6 @@ from email_utils import send_password_reset_email
 import os
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -17,17 +16,14 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# File Upload Configuration
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Initialize database
 db.init_app(app)
 
-# Initialize Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -126,7 +122,8 @@ def login():
         
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
-            return redirect(url_for('dashboard'))
+            next_page = request.args.get('next')
+            return redirect(next_page if next_page else url_for('dashboard'))
             
         flash('Invalid email or password')
     
