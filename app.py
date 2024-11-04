@@ -236,6 +236,46 @@ def all_properties():
                          properties_json=properties_json,
                          here_api_key=os.environ.get('HERE_API_KEY'))
 
+@app.route('/account', methods=['GET', 'POST'])
+@login_required
+def account():
+    user_companies = Company.query.all()
+    return render_template('account.html', companies=user_companies)
+
+@app.route('/update_phone', methods=['POST'])
+@login_required
+def update_phone():
+    phone_number = request.form.get('phone_number')
+    current_user.phone_number = phone_number
+    db.session.commit()
+    flash('Phone number updated successfully')
+    return redirect(url_for('account'))
+
+@app.route('/update_company_membership', methods=['POST'])
+@login_required
+def update_company_membership():
+    company_id = request.form.get('company_id')
+    action = request.form.get('action')
+    
+    if not company_id:
+        flash('No company selected')
+        return redirect(url_for('account'))
+        
+    company = Company.query.get_or_404(company_id)
+    
+    if action == 'join':
+        if company not in current_user.member_of_companies:
+            current_user.member_of_companies.append(company)
+            db.session.commit()
+            flash(f'Successfully joined {company.name}')
+    elif action == 'leave':
+        if company in current_user.member_of_companies:
+            current_user.member_of_companies.remove(company)
+            db.session.commit()
+            flash(f'Successfully left {company.name}')
+            
+    return redirect(url_for('account'))
+
 @app.route('/user/<username>')
 def public_profile(username):
     profile_user = User.query.filter_by(username=username).first_or_404()
