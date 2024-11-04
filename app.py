@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -25,7 +25,6 @@ def allowed_file(filename):
 
 db.init_app(app)
 
-# Add phone_number column if it doesn't exist
 with app.app_context():
     try:
         db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20)'))
@@ -74,6 +73,22 @@ def delete_user(user_id):
         logger.error(f"Error deleting user: {str(e)}")
         db.session.rollback()
         return jsonify({'success': False, 'message': 'Error deleting user'}), 500
+
+@app.route('/user/<username>')
+def public_profile(username):
+    profile_user = User.query.filter_by(username=username).first_or_404()
+    
+    properties = Property.query.filter_by(user_id=profile_user.id).all()
+    
+    owned_companies = Company.query.filter_by(owner_id=profile_user.id).all()
+    member_companies = profile_user.member_of_companies
+    
+    companies = list(set(owned_companies + list(member_companies)))
+    
+    return render_template('public_profile.html',
+                         profile_user=profile_user,
+                         properties=properties,
+                         companies=companies)
 
 @app.route('/verify_email/<token>')
 def verify_email(token):

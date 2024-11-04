@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.username }}'s Profile - WEVOSI{% endblock %}
+
+{% block content %}
+<div class="public-profile-container">
+    <div class="profile-header">
+        <div class="profile-picture">
+            {% if profile_user.profile_picture %}
+                <img src="{{ url_for('static', filename=profile_user.profile_picture) }}" alt="Profile Picture">
+            {% else %}
+                <img src="{{ url_for('static', filename='icons/user.svg') }}" alt="Default Profile">
+            {% endif %}
+        </div>
+        <h1>{{ profile_user.username }}</h1>
+        {% if profile_user.role == 'admin' %}
+            <span class="admin-badge">Admin</span>
+        {% endif %}
+    </div>
+
+    <div class="profile-content">
+        <div class="properties-section">
+            <h2>Properties</h2>
+            {% if properties %}
+                <div class="properties-grid">
+                    {% for property in properties %}
+                        <div class="property-card">
+                            <h3>{{ property.property_name }}</h3>
+                            <div class="property-details">
+                                <p><strong>Location:</strong></p>
+                                <p>{{ property.city }}, {{ property.state }}</p>
+                            </div>
+                            <div class="property-details">
+                                <p><strong>Property Details:</strong></p>
+                                <p>Type: {{ property.type }}</p>
+                                <p>{{ property.acres }} acres</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="no-properties">No properties listed yet.</p>
+            {% endif %}
+        </div>
+
+        {% if companies %}
+        <div class="companies-section">
+            <h2>Companies</h2>
+            <div class="companies-grid">
+                {% for company in companies %}
+                    <div class="company-card">
+                        <h3>{{ company.name }}</h3>
+                        <p>{{ company.description }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.public-profile-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.profile-header h1 {
+    color: var(--text-primary);
+    margin: 1rem 0;
+    font-size: 2rem;
+}
+
+.profile-picture {
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--accent-color);
+}
+
+.profile-picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.admin-badge {
+    background-color: var(--accent-color);
+    color: var(--text-primary);
+    padding: 0.25rem 1rem;
+    border-radius: 1rem;
+    font-size: 0.9rem;
+    display: inline-block;
+}
+
+.profile-content {
+    background-color: var(--bg-secondary);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.properties-section,
+.companies-section {
+    margin-bottom: 3rem;
+}
+
+.properties-section h2,
+.companies-section h2 {
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.properties-grid,
+.companies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.property-card,
+.company-card {
+    background-color: var(--bg-primary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.property-card h3,
+.company-card h3 {
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+}
+
+.property-details {
+    margin: 0.8rem 0;
+    padding: 0.8rem 0;
+    border-top: 1px solid var(--bg-secondary);
+}
+
+.property-details:last-child {
+    border-bottom: none;
+}
+
+.no-properties {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 2rem;
+}
+
+.company-card p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .public-profile-container {
+        padding: 1rem;
+    }
+    
+    .properties-grid,
+    .companies-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .profile-content {
+        padding: 1rem;
+    }
+}
+</style>
+{% endblock %}
