@@ -145,6 +145,84 @@ def login():
     
     return render_template('login.html')
 
+@app.route('/reset_request', methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            token = user.get_reset_token()
+            reset_url = url_for('reset_password', token=token, _external=True)
+            if send_password_reset_email(user.email, reset_url):
+                flash('Reset link sent to your email')
+                return redirect(url_for('login'))
+            else:
+                flash('Error sending reset email. Please try again.')
+        else:
+            flash('No account found with that email')
+    return render_template('reset_request.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    user = User.verify_reset_token(token)
+    if user is None:
+        flash('Invalid or expired reset link')
+        return redirect(url_for('reset_request'))
+    if request.method == 'POST':
+        password = request.form.get('password')
+        user.password_hash = generate_password_hash(password)
+        db.session.commit()
+        flash('Password has been reset! You can now log in.')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html')
+
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    user = User.verify_email_token(token)
+    if user is None:
+        flash('Invalid or expired verification token')
+        return render_template('verify_email.html', verified=False)
+        
+    if user.email_verified:
+        flash('Email already verified')
+        return redirect(url_for('login'))
+        
+    user.email_verified = True
+    db.session.commit()
+    flash('Your email has been verified! You can now log in.')
+    return render_template('verify_email.html', verified=True)
+
+@app.route('/resend_verification', methods=['GET', 'POST'])
+def resend_verification():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            if user.email_verified:
+                flash('Email already verified. Please log in.')
+                return redirect(url_for('login'))
+                
+            token = user.get_verification_token()
+            verification_url = url_for('verify_email', token=token, _external=True)
+            
+            if send_verification_email(email, verification_url):
+                flash('A new verification email has been sent.')
+                return redirect(url_for('login'))
+            else:
+                flash('Error sending verification email. Please try again.')
+        else:
+            flash('No account found with that email address.')
+            
+    return render_template('resend_verification.html')
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -156,6 +234,31 @@ def logout():
 def dashboard():
     users = User.query.all() if current_user.role == 'admin' else None
     return render_template('dashboard.html', users=users)
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    user_notifications = Notification.query.filter_by(user_id=current_user.id)\
+        .order_by(Notification.created_at.desc())\
+        .all()
+    return render_template('notifications.html', notifications=user_notifications)
+
+@app.route('/notifications/mark_read/<int:notification_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    notification = Notification.query.get_or_404(notification_id)
+    if notification.user_id != current_user.id:
+        abort(403)
+    notification.read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/notifications/mark_all_read', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    Notification.query.filter_by(user_id=current_user.id).update({'read': True})
+    db.session.commit()
+    return jsonify({'success': True})
 
 @app.route('/properties')
 @login_required
@@ -212,65 +315,74 @@ def account():
     user_companies = Company.query.all()
     return render_template('account.html', companies=user_companies)
 
+@app.route('/create_company', methods=['POST'])
+@login_required
+def create_company():
+    if current_user.role != 'admin':
+        abort(403)
+        
+    name = request.form.get('name')
+    description = request.form.get('description')
+    
+    if Company.query.filter_by(name=name).first():
+        flash('Company name already exists')
+        return redirect(url_for('account'))
+        
+    company = Company(
+        name=name,
+        description=description,
+        owner_id=current_user.id
+    )
+    
+    try:
+        db.session.add(company)
+        db.session.commit()
+        flash('Company created successfully')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating company: {str(e)}")
+        flash('Error creating company. Please try again.')
+        
+    return redirect(url_for('account'))
+
+@app.route('/update_phone', methods=['POST'])
+@login_required
+def update_phone():
+    phone_number = request.form.get('phone_number')
+    current_user.phone_number = phone_number
+    db.session.commit()
+    flash('Phone number updated successfully')
+    return redirect(url_for('account'))
+
+@app.route('/update_company_membership', methods=['POST'])
+@login_required
+def update_company_membership():
+    company_id = request.form.get('company_id')
+    action = request.form.get('action')
+    
+    if not company_id:
+        flash('No company selected')
+        return redirect(url_for('account'))
+        
+    company = Company.query.get_or_404(company_id)
+    
+    if action == 'join':
+        if company not in current_user.member_of_companies:
+            current_user.member_of_companies.append(company)
+            db.session.commit()
+            flash(f'Successfully joined {company.name}')
+    elif action == 'leave':
+        if company in current_user.member_of_companies:
+            current_user.member_of_companies.remove(company)
+            db.session.commit()
+            flash(f'Successfully left {company.name}')
+            
+    return redirect(url_for('account'))
+
 @app.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
     return render_template('settings.html')
-
-@app.route('/notifications')
-@login_required
-def notifications():
-    user_notifications = Notification.query.filter_by(user_id=current_user.id)\
-        .order_by(Notification.created_at.desc())\
-        .all()
-    return render_template('notifications.html', notifications=user_notifications)
-
-@app.route('/notifications/mark_read/<int:notification_id>', methods=['POST'])
-@login_required
-def mark_notification_read(notification_id):
-    notification = Notification.query.get_or_404(notification_id)
-    if notification.user_id != current_user.id:
-        abort(403)
-    notification.read = True
-    db.session.commit()
-    return jsonify({'success': True})
-
-@app.route('/notifications/mark_all_read', methods=['POST'])
-@login_required
-def mark_all_notifications_read():
-    Notification.query.filter_by(user_id=current_user.id).update({'read': True})
-    db.session.commit()
-    return jsonify({'success': True})
-
-@app.route('/upload_profile_picture', methods=['POST'])
-@login_required
-def upload_profile_picture():
-    if 'profile_picture' not in request.files:
-        flash('No file selected')
-        return redirect(url_for('account'))
-        
-    file = request.files['profile_picture']
-    if file.filename == '':
-        flash('No file selected')
-        return redirect(url_for('account'))
-        
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        unique_filename = f"{os.urandom(16).hex()}.{filename.rsplit('.', 1)[1].lower()}"
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        
-        try:
-            file.save(file_path)
-            current_user.profile_picture = f"uploads/{unique_filename}"
-            db.session.commit()
-            flash('Profile picture updated successfully')
-        except Exception as e:
-            logger.error(f"Error uploading profile picture: {str(e)}")
-            flash('Error uploading profile picture')
-    else:
-        flash('Invalid file type')
-        
-    return redirect(url_for('account'))
 
 @app.route('/update_profile', methods=['POST'])
 @login_required
