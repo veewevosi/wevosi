@@ -209,5 +209,68 @@ def create_company():
     flash('Company created successfully')
     return redirect(url_for('account'))
 
+@app.route('/properties')
+@login_required
+def properties():
+    properties = Property.query.filter_by(user_id=current_user.id).all()
+    return render_template('properties.html', properties=properties)
+
+@app.route('/add_property', methods=['POST'])
+@login_required
+def add_property():
+    try:
+        property_name = request.form.get('property_name')
+        street_address = request.form.get('street_address')
+        city = request.form.get('city')
+        state = request.form.get('state')
+        zipcode = request.form.get('zipcode')
+        longitude = float(request.form.get('longitude'))
+        latitude = float(request.form.get('latitude'))
+        acres = float(request.form.get('acres'))
+        square_feet = float(request.form.get('square_feet'))
+        property_type = request.form.get('type')
+
+        new_property = Property(
+            property_name=property_name,
+            street_address=street_address,
+            city=city,
+            state=state,
+            zipcode=zipcode,
+            longitude=longitude,
+            latitude=latitude,
+            acres=acres,
+            square_feet=square_feet,
+            type=property_type,
+            user_id=current_user.id
+        )
+        
+        db.session.add(new_property)
+        db.session.commit()
+        flash('Property added successfully')
+        
+    except Exception as e:
+        flash('Error adding property')
+        logger.error(f"Error adding property: {str(e)}")
+        
+    return redirect(url_for('properties'))
+
+@app.route('/all_properties')
+@login_required
+def all_properties():
+    properties = Property.query.all()
+    properties_json = [{
+        'name': p.property_name,
+        'address': f"{p.street_address}, {p.city}, {p.state}",
+        'type': p.type,
+        'acres': p.acres,
+        'latitude': p.latitude,
+        'longitude': p.longitude
+    } for p in properties]
+    
+    return render_template('all_properties.html', 
+                         properties=properties,
+                         properties_json=properties_json,
+                         here_api_key=os.environ.get('HERE_API_KEY'))
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
