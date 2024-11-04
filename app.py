@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash, jso
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from models import User, Company, Property
+from models import User, Company, Property, Notification
 from database import db
 from email_utils import send_verification_email, send_password_reset_email
 import os
@@ -188,6 +188,31 @@ def dashboard():
     users = User.query.all() if current_user.role == 'admin' else None
     return render_template('dashboard.html', users=users)
 
+@app.route('/notifications')
+@login_required
+def notifications():
+    notifications = Notification.query.filter_by(user_id=current_user.id)\
+        .order_by(Notification.created_at.desc())\
+        .all()
+    return render_template('notifications.html', notifications=notifications)
+
+@app.route('/notifications/mark_read/<int:notification_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    notification = Notification.query.get_or_404(notification_id)
+    if notification.user_id != current_user.id:
+        abort(403)
+    notification.read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/notifications/mark_all_read', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    Notification.query.filter_by(user_id=current_user.id).update({'read': True})
+    db.session.commit()
+    return jsonify({'success': True})
+
 @app.route('/user/<username>')
 def public_profile(username):
     profile_user = User.query.filter_by(username=username).first_or_404()
@@ -205,8 +230,6 @@ def public_profile(username):
                          profile_user=profile_user,
                          companies=companies,
                          qr_code=qr_code)
-
-# Add other routes as they were before...
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

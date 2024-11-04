@@ -21,8 +21,9 @@ class User(UserMixin, db.Model):
     email_verification_token = db.Column(db.String(100), unique=True)
     profile_picture = db.Column(db.String(255))
     role = db.Column(db.String(20), default='user')
-    phone_number = db.Column(db.String(20), nullable=True)  # Updated to be nullable
+    phone_number = db.Column(db.String(20), nullable=True)
     properties = db.relationship('Property', backref='owner', lazy=True)
+    notifications = db.relationship('Notification', backref='user', lazy=True)
     # Add relationships with Company
     owned_companies = db.relationship('Company', backref='owner', lazy=True)
     member_of_companies = db.relationship('Company', secondary=user_company, lazy='subquery',
@@ -86,3 +87,14 @@ class Property(db.Model):
 
     def __repr__(self):
         return f'<Property {self.property_name}>'
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self):
+        return f'<Notification {self.title}>'
