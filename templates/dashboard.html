@@ -19,6 +19,26 @@
         </div>
     </div>
 
+    <div class="dashboard-actions">
+        <h3>Quick Actions</h3>
+        <div class="action-buttons">
+            <a href="{{ url_for('settings') }}" class="action-btn">
+                <span>Account Settings</span>
+            </a>
+            <a href="{{ url_for('account') }}" class="action-btn">
+                <span>Profile</span>
+            </a>
+            <a href="{{ url_for('properties') }}" class="action-btn">
+                <span>Properties</span>
+            </a>
+            {% if not current_user.email_verified %}
+            <a href="{{ url_for('resend_verification') }}" class="action-btn warning">
+                <span>Verify Email</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
     {% if current_user.role == 'admin' %}
     <div class="admin-section">
         <h3>User Management</h3>
@@ -54,26 +74,6 @@
         </div>
     </div>
     {% endif %}
-
-    <div class="dashboard-actions">
-        <h3>Quick Actions</h3>
-        <div class="action-buttons">
-            <a href="{{ url_for('settings') }}" class="action-btn">
-                <span>Account Settings</span>
-            </a>
-            <a href="{{ url_for('account') }}" class="action-btn">
-                <span>Profile</span>
-            </a>
-            <a href="{{ url_for('properties') }}" class="action-btn">
-                <span>Properties</span>
-            </a>
-            {% if not current_user.email_verified %}
-            <a href="{{ url_for('resend_verification') }}" class="action-btn warning">
-                <span>Verify Email</span>
-            </a>
-            {% endif %}
-        </div>
-    </div>
 </div>
 {% endblock %}
 
@@ -83,7 +83,7 @@
     background-color: var(--bg-secondary);
     padding: 1.5rem;
     border-radius: 8px;
-    margin: 2rem 0;
+    margin-top: 2rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
