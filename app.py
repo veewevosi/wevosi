@@ -191,10 +191,10 @@ def dashboard():
 @app.route('/notifications')
 @login_required
 def notifications():
-    notifications = Notification.query.filter_by(user_id=current_user.id)\
+    user_notifications = Notification.query.filter_by(user_id=current_user.id)\
         .order_by(Notification.created_at.desc())\
         .all()
-    return render_template('notifications.html', notifications=notifications)
+    return render_template('notifications.html', notifications=user_notifications)
 
 @app.route('/notifications/mark_read/<int:notification_id>', methods=['POST'])
 @login_required
@@ -218,6 +218,23 @@ def mark_all_notifications_read():
 def properties():
     user_properties = Property.query.filter_by(user_id=current_user.id).all()
     return render_template('properties.html', properties=user_properties)
+
+@app.route('/all_properties')
+@login_required
+def all_properties():
+    properties = Property.query.all()
+    properties_json = [{
+        'name': p.property_name,
+        'address': f"{p.street_address}, {p.city}, {p.state} {p.zipcode}",
+        'type': p.type,
+        'acres': p.acres,
+        'latitude': p.latitude,
+        'longitude': p.longitude
+    } for p in properties]
+    return render_template('all_properties.html', 
+                         properties=properties,
+                         properties_json=properties_json,
+                         here_api_key=os.environ.get('HERE_API_KEY'))
 
 @app.route('/user/<username>')
 def public_profile(username):
