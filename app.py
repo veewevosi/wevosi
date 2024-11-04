@@ -28,6 +28,25 @@ def allowed_file(filename):
 
 db.init_app(app)
 
+# Create notification table
+with app.app_context():
+    try:
+        db.session.execute(text('''
+            CREATE TABLE IF NOT EXISTS notification (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES "user" (id),
+                title VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            )
+        '''))
+        db.session.commit()
+        print("Notification table created successfully")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creating notification table: {e}")
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
