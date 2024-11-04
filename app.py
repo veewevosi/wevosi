@@ -36,6 +36,45 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route('/reset_request', methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            token = user.get_reset_token()
+            reset_url = url_for('reset_password', token=token, _external=True)
+            send_password_reset_email(user.email, reset_url)
+            flash('Password reset instructions sent to your email')
+            return redirect(url_for('login'))
+        else:
+            flash('No account found with that email address')
+    
+    return render_template('reset_request.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    user = User.verify_reset_token(token)
+    if not user:
+        flash('Invalid or expired reset token')
+        return redirect(url_for('reset_request'))
+        
+    if request.method == 'POST':
+        password = request.form.get('password')
+        user.password_hash = generate_password_hash(password)
+        db.session.commit()
+        flash('Password has been updated! You can now log in')
+        return redirect(url_for('login'))
+        
+    return render_template('reset_password.html')
+
 @app.route('/upload_profile_picture', methods=['POST'])
 @login_required
 def upload_profile_picture():
