@@ -4,6 +4,12 @@ from itsdangerous import URLSafeTimedSerializer as Serializer
 from flask import current_app
 from sqlalchemy.sql import func
 
+# Association table for User-Company many-to-many relationship
+user_company = db.Table('user_company',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('company_id', db.Integer, db.ForeignKey('company.id'), primary_key=True)
+)
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -16,6 +22,10 @@ class User(UserMixin, db.Model):
     profile_picture = db.Column(db.String(255))
     role = db.Column(db.String(20), default='user')  # Added role field
     properties = db.relationship('Property', backref='owner', lazy=True)
+    # Add relationships with Company
+    owned_companies = db.relationship('Company', backref='owner', lazy=True)
+    member_of_companies = db.relationship('Company', secondary=user_company, lazy='subquery',
+        backref=db.backref('members', lazy=True))
 
     def get_reset_token(self):
         s = Serializer(current_app.config['SECRET_KEY'])
@@ -45,6 +55,17 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+class Company(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated_at = db.Column(db.DateTime(timezone=True), onupdate=func.now())
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __repr__(self):
+        return f'<Company {self.name}>'
 
 class Property(db.Model):
     id = db.Column(db.Integer, primary_key=True)
