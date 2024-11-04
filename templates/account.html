@@ -246,15 +246,28 @@ document.getElementById('companySearchInput').addEventListener('input', function
     const select = document.getElementById('companySelect');
     const options = select.getElementsByTagName('option');
     
+    let found = false;
     for (let option of options) {
         if (option.value === '') continue; // Skip the placeholder option
         
-        const text = option.textContent.toLowerCase();
+        const text = option.textContent.trim().toLowerCase();
         if (text.includes(searchText)) {
             option.style.display = '';
+            if (!found) {
+                select.value = option.value;
+                found = true;
+            }
         } else {
             option.style.display = 'none';
         }
+    }
+    
+    // Trigger company details update
+    if (found) {
+        handleCompanyChange();
+    } else {
+        select.value = '';
+        document.getElementById('companyDetails').style.display = 'none';
     }
 });
 
