@@ -36,6 +36,45 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route('/reset_request', methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            token = user.get_reset_token()
+            reset_url = url_for('reset_password', token=token, _external=True)
+            send_password_reset_email(user.email, reset_url)
+            flash('Password reset instructions sent to your email')
+            return redirect(url_for('login'))
+        else:
+            flash('No account found with that email address')
+    
+    return render_template('reset_request.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    user = User.verify_reset_token(token)
+    if not user:
+        flash('Invalid or expired reset token')
+        return redirect(url_for('reset_request'))
+        
+    if request.method == 'POST':
+        password = request.form.get('password')
+        user.password_hash = generate_password_hash(password)
+        db.session.commit()
+        flash('Password has been updated! You can now log in')
+        return redirect(url_for('login'))
+        
+    return render_template('reset_password.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -117,56 +156,11 @@ def dashboard():
 def settings():
     return render_template('settings.html')
 
-@app.route('/update_profile', methods=['POST'])
-@login_required
-def update_profile():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        
-        if username != current_user.username and User.query.filter_by(username=username).first():
-            flash('Username already exists')
-            return redirect(url_for('settings'))
-            
-        if email != current_user.email and User.query.filter_by(email=email).first():
-            flash('Email already registered')
-            return redirect(url_for('settings'))
-            
-        current_user.username = username
-        current_user.email = email
-        db.session.commit()
-        flash('Profile updated successfully')
-    return redirect(url_for('settings'))
-
-@app.route('/change_password', methods=['POST'])
-@login_required
-def change_password():
-    if request.method == 'POST':
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-        
-        if not check_password_hash(current_user.password_hash, current_password):
-            flash('Current password is incorrect')
-        elif new_password != confirm_password:
-            flash('New passwords do not match')
-        else:
-            current_user.password_hash = generate_password_hash(new_password)
-            db.session.commit()
-            flash('Password changed successfully')
-    return redirect(url_for('settings'))
-
 @app.route('/account')
 @login_required
 def account():
     companies = Company.query.all()
     return render_template('account.html', companies=companies)
-
-@app.route('/properties')
-@login_required
-def properties():
-    user_properties = Property.query.filter_by(user_id=current_user.id).all()
-    return render_template('properties.html', properties=user_properties)
 
 @app.route('/update_company_membership', methods=['POST'])
 @login_required
