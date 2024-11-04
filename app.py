@@ -7,6 +7,7 @@ from database import db
 from email_utils import send_verification_email, send_password_reset_email
 import os
 import logging
+from sqlalchemy import text
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -23,6 +24,15 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 db.init_app(app)
+
+# Add phone_number column if it doesn't exist
+with app.app_context():
+    try:
+        db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20)'))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding phone_number column: {e}")
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -145,10 +155,6 @@ def reset_password(token):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Temporarily add db.create_all() to create missing columns
-    with app.app_context():
-        db.create_all()
-        
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
